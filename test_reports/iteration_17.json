@@ -1,0 +1,126 @@
+{
+  "summary": "GSM v78.0 Testing Complete - 100% INDEPENDENTE. System now uses ONLY PNCP (pncp.gov.br) and Compras.gov.br APIs. ZERO Conlicitação dependency verified. All 9 features tested and passing. Backend: 8/8 tests passed. Frontend: All features verified via Playwright.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_gsm_v78_independente.py",
+    "/app/test_reports/pytest/pytest_results_v78.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: /api/search/unified?q=canabidiol returns fontes: {pncp_gov_br: 2812, compras_gov_br: 0} - NO conlicitacao",
+    "VERIFIED: 50 results checked - ZERO links (link_pdf, link_portal, link_edital) contain 'conlicitacao'",
+    "VERIFIED: All 50 link_pdf values point to pncp.gov.br/pncp-api/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos/1",
+    "VERIFIED: /api/editais/itens/46374500000194/2026/1216 returns 4 real items from PNCP API (Canabidiol)",
+    "VERIFIED: /api/editais/arquivos/46374500000194/2026/1216 returns 1 file with URL pointing to PNCP",
+    "VERIFIED: 5/5 PDF download links return HTTP 200 with Content-Type: application/octet-stream",
+    "VERIFIED: Insulina search returns fontes: {pncp_gov_br: 11858} - NO conlicitacao",
+    "VERIFIED: Frontend 'BAIXAR EDITAL' buttons all have href pointing to pncp.gov.br - 15 tested, 0 violations",
+    "VERIFIED: 'Ver Itens' loads items from PNCP API - shows table with #, descricao, quantidade",
+    "VERIFIED: Keyword highlighting works - 73 elements highlighted in yellow (bg-yellow-300)"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_gsm_v78_independente.py"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 tests passed in 20.85s)",
+    "frontend": "100% (all 9 features verified)"
+  },
+  "test_credentials": "None required - 100% public government APIs",
+  "seed_data_creation": "None - using LIVE calls to PNCP API (pncp.gov.br)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "GSM v78.0 is 100% INDEPENDENTE using ONLY pncp.gov.br and compras.gov.br APIs. No Conlicitação dependency. Motor at /app/backend/services/motor_independente.py. Test CNPJ for itens: 46374500000194/2026/1216 (4 canabidiol items). All PDF links follow pattern: https://pncp.gov.br/pncp-api/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos/1",
+  "features_tested": {
+    "1_backend_search_unified_sources": {
+      "status": "PASS",
+      "details": "GET /api/search/unified?q=canabidiol returns fontes: {pncp_gov_br: 2812, compras_gov_br: 0} - NO conlicitacao_live"
+    },
+    "2_backend_no_conlicitacao_links": {
+      "status": "PASS",
+      "details": "50 results verified - ZERO links contain 'conlicitacao'. All link_pdf point to pncp.gov.br/pncp-api"
+    },
+    "3_backend_editais_itens_endpoint": {
+      "status": "PASS",
+      "details": "/api/editais/itens/46374500000194/2026/1216 returns 4 items: Canabidiol 30ML, 4ML, 12ML, 4ML"
+    },
+    "4_backend_editais_arquivos_endpoint": {
+      "status": "PASS",
+      "details": "/api/editais/arquivos/{cnpj}/{ano}/{seq} returns file with PNCP URL"
+    },
+    "5_backend_link_pdf_real_download": {
+      "status": "PASS",
+      "details": "5/5 PDF links return HTTP 200 with Content-Type: application/octet-stream"
+    },
+    "6_frontend_canabidiol_search_pncp_links": {
+      "status": "PASS",
+      "details": "50 results, 15 download buttons tested - all href point to pncp.gov.br, 0 to conlicitacao"
+    },
+    "7_frontend_ver_itens_pncp_api": {
+      "status": "PASS",
+      "details": "Ver Itens loads items from PNCP API - shows table with Item #, Descricao, Qtd, Valor"
+    },
+    "8_frontend_keyword_highlighting": {
+      "status": "PASS",
+      "details": "73 CANABIDIOL keywords highlighted in yellow (bg-yellow-300) in objeto and items"
+    },
+    "9_backend_insulina_search": {
+      "status": "PASS",
+      "details": "Insulina returns fontes: {pncp_gov_br: 11858} with PNCP download links"
+    }
+  },
+  "api_verification": {
+    "/api/search/unified?q=canabidiol": {
+      "status": 200,
+      "total": 50,
+      "fontes": {
+        "pncp_gov_br": 2812,
+        "compras_gov_br": 0
+      },
+      "links_containing_conlicitacao": 0,
+      "all_links_point_to": "pncp.gov.br/pncp-api"
+    },
+    "/api/search/unified?q=insulina": {
+      "status": 200,
+      "total": 40,
+      "fontes": {
+        "pncp_gov_br": 11858,
+        "compras_gov_br": 0
+      }
+    },
+    "/api/editais/itens/46374500000194/2026/1216": {
+      "status": 200,
+      "total": 4,
+      "items": ["Canabidiol 30ML", "Canabidiol 4ML", "Canabidiol 12ML", "Canabidiol 4ML"]
+    },
+    "/api/editais/arquivos/46374500000194/2026/1216": {
+      "status": 200,
+      "total": 1,
+      "file_url": "https://pncp.gov.br/pncp-api/v1/orgaos/46374500000194/compras/2026/1216/arquivos/1"
+    }
+  },
+  "independence_verification": {
+    "conlicitacao_removed": true,
+    "apis_used": ["PNCP (pncp.gov.br)", "Compras.gov.br"],
+    "pdf_download_source": "Direct from PNCP API",
+    "items_source": "Direct from PNCP API",
+    "no_third_party_dependencies": true
+  },
+  "console_errors_detected": 0,
+  "performance": {
+    "backend_tests_time": "20.85s",
+    "search_canabidiol_ms": 1498,
+    "note": "Faster than v77 due to direct PNCP calls instead of Conlicitação"
+  },
+  "screenshots": [
+    ".screenshots/canabidiol_results_v78.png",
+    ".screenshots/ver_itens_expanded_v78.png"
+  ]
+}

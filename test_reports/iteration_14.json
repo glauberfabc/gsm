@@ -1,0 +1,154 @@
+{
+  "summary": "v73.1 Frontend Testing Complete - All 9 features verified working. CANABIDIOL search returns 59 results from multiple portals (PNCP, BLL, Conlicitação). Portal names show state codes correctly (BLL (MT), PNCP (SP)). All 50 download links valid (0 'None'/#). 36 /editais/ links, 0 /app/compras/. 34 keyword highlights (CANABIDIOL, THC, CBD). RADARES tab has 9 'Pesquisar Editais' buttons. MINHAS LISTAS 'Pesquisar' buttons work. Manual search 'insulina' returns 53 results.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_14.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: Search 'canabidiol' returns 59 results (expected 50+) - PASS",
+    "VERIFIED: Portal names display correctly with state codes - 'BLL (MT)', 'PNCP (SP)', 'www.compras.rj.gov.br' visible",
+    "VERIFIED: Download links valid - 50 valid links, 0 'None'/#/undefined links",
+    "VERIFIED: Download links use /editais/ NOT /compras/ - 36 /editais/ links, 0 /app/compras/ links",
+    "VERIFIED: Keyword highlighting works - 34 <mark class='bg-yellow-300'> elements highlighting CANABIDIOL, THC, CBD",
+    "VERIFIED: CANABIDIOL radar click fills search box with full terms and triggers search automatically",
+    "VERIFIED: MINHAS LISTAS tab shows 4 lists with 'Pesquisar' buttons - buttons clickable and trigger search",
+    "VERIFIED: RADARES tab has 9 'Pesquisar Editais' buttons visible and functional",
+    "VERIFIED: Manual search 'insulina' returns 53 results with portal names"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend-only testing)",
+    "frontend": "100%"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "v73.1 all 9 features verified working. System queries PNCP + Conlicitação + optional Effecti in parallel. Portal names come from detecting edital_site domain for Conlicitação results and UF for PNCP results. Download links converted from /app/compras/ to /app/editais/. RADARES tab has Pesquisar Editais. MINHAS LISTAS has 4 lists (ANA CLAUDA, THIAGO CHALUP, IMPORTADOS, CANABIDIOL). Keyword highlighting uses <mark class='bg-yellow-300'>.",
+  "features_tested": {
+    "P0_SEARCH_CANABIDIOL_50_PLUS_RESULTS": {
+      "status": "PASS",
+      "details": "59 results returned for CANABIDIOL radar search (expected 50+)"
+    },
+    "P0_PORTAL_NAMES_WITH_STATE_CODES": {
+      "status": "PASS",
+      "details": "Portal names display correctly: BLL (MT), PNCP (SP), www.compras.rj.gov.br visible"
+    },
+    "P0_DOWNLOAD_LINKS_VALID": {
+      "status": "PASS",
+      "details": "50 valid download links, 0 invalid (None/#/undefined)"
+    },
+    "P0_DOWNLOAD_LINKS_USE_EDITAIS": {
+      "status": "PASS",
+      "details": "36 /editais/ links, 0 /app/compras/ links"
+    },
+    "P0_KEYWORD_HIGHLIGHTING": {
+      "status": "PASS",
+      "details": "34 highlighted elements - CANABIDIOL, THC, CBD highlighted in yellow"
+    },
+    "P0_RADAR_CANABIDIOL_CLICK": {
+      "status": "PASS",
+      "details": "Clicking CANABIDIOL radar fills search box and triggers search automatically"
+    },
+    "P0_MINHAS_LISTAS_PESQUISAR": {
+      "status": "PASS",
+      "details": "4 lists with Pesquisar buttons, buttons trigger search correctly"
+    },
+    "P0_RADARES_PESQUISAR_EDITAIS": {
+      "status": "PASS",
+      "details": "9 'Pesquisar Editais' buttons found and functional"
+    },
+    "P0_MANUAL_SEARCH_INSULINA": {
+      "status": "PASS",
+      "details": "Manual search 'insulina' returns 53 results with portal names"
+    }
+  },
+  "test_runs": [
+    {
+      "test": "CANABIDIOL radar search",
+      "result": "PASS",
+      "results_count": 59,
+      "expected": ">= 50"
+    },
+    {
+      "test": "Portal names in results",
+      "result": "PASS",
+      "sample_portals": ["BLL (MT)", "PNCP (SP)", "www.compras.rj.gov.br"]
+    },
+    {
+      "test": "Download links validity",
+      "result": "PASS",
+      "valid_links": 50,
+      "invalid_links": 0
+    },
+    {
+      "test": "Download links use /editais/",
+      "result": "PASS",
+      "editais_links": 36,
+      "compras_links": 0
+    },
+    {
+      "test": "Keyword highlighting",
+      "result": "PASS",
+      "highlights_found": 34,
+      "highlighted_terms": ["CANABIDIOL", "THC", "CBD", "canabidiol"]
+    },
+    {
+      "test": "CANABIDIOL radar click",
+      "result": "PASS",
+      "search_terms_filled": "Canabidiol, Mevatyl, CBD, THC, NANO, BIOLOGICS..."
+    },
+    {
+      "test": "MINHAS LISTAS Pesquisar",
+      "result": "PASS",
+      "lists_found": 4,
+      "pesquisar_buttons": 4
+    },
+    {
+      "test": "RADARES Pesquisar Editais",
+      "result": "PASS",
+      "buttons_found": 9,
+      "search_results": 53
+    },
+    {
+      "test": "Manual search insulina",
+      "result": "PASS",
+      "search_term": "insulina",
+      "results": 53
+    }
+  ],
+  "console_errors_detected": 0,
+  "screenshots": [
+    ".screenshots/test1_canabidiol_results.png",
+    ".screenshots/canabidiol_full_test.png",
+    ".screenshots/minhas_listas_tab.png",
+    ".screenshots/radares_tab_view.png",
+    ".screenshots/manual_insulina_results.png"
+  ],
+  "link_analysis": {
+    "total_download_links": 50,
+    "valid_links": 50,
+    "invalid_links": 0,
+    "editais_links": 36,
+    "compras_links": 0,
+    "sample_urls": [
+      "https://consultaonline.conlicitacao.com.br/boletim_web/public/licitacoes/1868568",
+      "https://consultaonline.conlicitacao.com.br/boletim_web/public/licitacoes/1865140"
+    ]
+  },
+  "portal_distribution": {
+    "BLL": "Present (MT, SP)",
+    "PNCP": "Present (multiple states)",
+    "www.compras.rj.gov.br": "Present (RJ)",
+    "multiple_states_found": 49
+  }
+}

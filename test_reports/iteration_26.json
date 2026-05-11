@@ -1,0 +1,125 @@
+{
+  "summary": "CMED Scraper feature (iteration 26) - All backend and frontend tests passed. 11 CMED medicines scraped from ANVISA CMED page with janela_importacao=true. Each card displays JANELA ABERTA badge (red, pulsing), dose, fase_cmed, and 3 action buttons.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_cmed_scraper.py",
+    "/app/test_reports/pytest/pytest_results_cmed.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: GET /api/anvisa/alertas returns 11 CMED items with fonte='CMED/ANVISA'",
+    "VERIFIED: All CMED items have janela_importacao=true",
+    "VERIFIED: CMED items include: SULFATO DE AMICACINA (1ª FASE), AMINOFILINA (1ª FASE), CLORIDRATO DE DOPAMINA (1ª FASE), DIPIRONA (1ª FASE), IMUNOGLOBULINA HUMANA (1ª FASE), SULFATO DE MAGNÉSIO (1ª FASE), FITOMENADIONA (2ª FASE), SULFATO DE SALBUTAMOL (2ª FASE), OCITOCINA (3ª FASE), HEPARINA SÓDICA SUÍNA (3ª FASE), HEPARINA SÓDICA BOVINA (3ª FASE)",
+    "VERIFIED: Each CMED item has dose field (e.g., '250 MG/ML SOL INJ' for Amicacina)",
+    "VERIFIED: Each CMED item has fase_cmed field (e.g., '1ª FASE', '2ª FASE', '3ª FASE')",
+    "VERIFIED: Stats show 11 janelas_abertas matching CMED count",
+    "VERIFIED: ANVISA tab displays CMED items with JANELA ABERTA badge (red, pulsing/animate-pulse)",
+    "VERIFIED: Each card shows 3 buttons: Localizar Editais (blue bg-blue-600), Ver Prova Documental (amber bg-amber-500), Gerar Esclarecimento (purple bg-purple-600)",
+    "VERIFIED: 'Localizar Editais' button navigates to Pesquisa tab with medicine name pre-filled",
+    "VERIFIED: 'Gerar Esclarecimento' button opens modal with medicine info, company dropdown, and generate button",
+    "VERIFIED: POST /api/anvisa/esclarecimento works with CMED medicine names",
+    "VERIFIED: Cards show CMED/ANVISA fonte badge, desabastecimento type, ALTO risk, and 80% indice"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_cmed_scraper.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "100% (all CMED features verified via Playwright)"
+  },
+  "test_credentials": "None required - all public APIs",
+  "seed_data_creation": "36 total alerts (11 CMED + 25 other ANVISA/DOU). Companies: c1=HC IMPORTAÇÕES (CNPJ 31.958.700/0001-17), c2=Smart Medical Filial SC",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "CMED scraper fully tested and working. Key data-testids: tab-anvisa, anvisa-alerta-{idx}, anvisa-med-nome-{idx}, anvisa-buscar-{idx}, anvisa-prova-{idx}, anvisa-esclarecimento-{idx}. The esclarecimento API may take 15-20 seconds to generate text when using Gemini AI. All 11 expected CMED medicines present with correct dose and fase_cmed fields.",
+  "features_tested": {
+    "GET_anvisa_alertas_cmed_items": {
+      "status": "PASS",
+      "details": "11 CMED items returned with fonte='CMED/ANVISA'"
+    },
+    "cmed_janela_importacao_true": {
+      "status": "PASS",
+      "details": "All 11 CMED items have janela_importacao=true"
+    },
+    "cmed_medicines_present": {
+      "status": "PASS",
+      "details": "All expected medicines found: Amicacina, Aminofilina, Dopamina, Dipirona, Imunoglobulina, Magnésio, Fitomenadiona, Salbutamol, Ocitocina, Heparina Suína, Heparina Bovina"
+    },
+    "cmed_dose_field": {
+      "status": "PASS",
+      "details": "Each CMED item has dose field (e.g., '250 MG/ML SOL INJ')"
+    },
+    "cmed_fase_cmed_field": {
+      "status": "PASS",
+      "details": "Each CMED item has fase_cmed field (1ª FASE, 2ª FASE, or 3ª FASE)"
+    },
+    "stats_janelas_abertas_count": {
+      "status": "PASS",
+      "details": "Stats show 11 janelas_abertas matching CMED item count"
+    },
+    "janela_aberta_badge_display": {
+      "status": "PASS",
+      "details": "CMED cards show red 'JANELA ABERTA' badge with animate-pulse effect"
+    },
+    "three_buttons_per_card": {
+      "status": "PASS",
+      "details": "Localizar Editais (blue), Ver Prova Documental (amber), Gerar Esclarecimento (purple)"
+    },
+    "localizar_editais_navigation": {
+      "status": "PASS",
+      "details": "Navigates to Pesquisa tab with medicine name pre-filled (e.g., 'HEPARINA SÓDICA BOVINA')"
+    },
+    "esclarecimento_modal_cmed": {
+      "status": "PASS",
+      "details": "Modal opens with CMED medicine info, situacao with fase_cmed, and company dropdown"
+    },
+    "esclarecimento_api_cmed": {
+      "status": "PASS",
+      "details": "POST /api/anvisa/esclarecimento generates text for CMED medicines (15-20s with Gemini)"
+    },
+    "cmed_card_tags": {
+      "status": "PASS",
+      "details": "Cards display: desabastecimento type, ALTO risk, CMED/ANVISA fonte, 80% indice"
+    }
+  },
+  "api_verification": {
+    "GET /api/anvisa/alertas": {
+      "status": 200,
+      "total_alerts": 36,
+      "cmed_items": 11,
+      "janelas_abertas": 11,
+      "risco_alto": 13
+    },
+    "POST /api/anvisa/esclarecimento": {
+      "status": 200,
+      "with_cmed_medicine": "Returns generated text with CMED medicine info",
+      "generation_time": "15-20 seconds with Gemini AI"
+    }
+  },
+  "cmed_medicines_verified": [
+    {"name": "SULFATO DE AMICACINA", "dose": "250 MG/ML SOL INJ", "fase": "1ª FASE"},
+    {"name": "AMINOFILINA", "dose": "24 MG/ML SOL INJ", "fase": "1ª FASE"},
+    {"name": "CLORIDRATO DE DOPAMINA", "dose": "5MG/ML SOL INJ", "fase": "1ª FASE"},
+    {"name": "DIPIRONA", "dose": "500 MG/ML SOL INJ", "fase": "1ª FASE"},
+    {"name": "IMUNOGLOBULINA HUMANA", "dose": "5,0 G", "fase": "1ª FASE"},
+    {"name": "SULFATO DE MAGNÉSIO", "dose": "10% E 50% SOL INJ", "fase": "1ª FASE"},
+    {"name": "FITOMENADIONA", "dose": "10 MG/ML", "fase": "2ª FASE"},
+    {"name": "SULFATO DE SALBUTAMOL", "dose": "0,5 MG/ML", "fase": "2ª FASE"},
+    {"name": "OCITOCINA", "dose": "5 UI/ML SOL INJ", "fase": "3ª FASE"},
+    {"name": "HEPARINA SÓDICA SUÍNA", "dose": "5.000 UI", "fase": "3ª FASE"},
+    {"name": "HEPARINA SÓDICA BOVINA", "dose": "5.000 UI", "fase": "3ª FASE"}
+  ],
+  "screenshots": [
+    ".screenshots/cmed_dashboard.png - ANVISA dashboard showing 11 JANELAS ABERTAS stat and CMED cards",
+    ".screenshots/cmed_localizar_editais.png - Search tab with medicine name pre-filled after clicking Localizar Editais",
+    ".screenshots/cmed_esclarecimento_modal.png - Esclarecimento modal with CMED medicine info and company dropdown"
+  ]
+}

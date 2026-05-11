@@ -1,0 +1,107 @@
+{
+  "summary": "PNCP Integration for Preços tab thoroughly tested. Backend returns 57-69 results for Prolia (was 2 before fix). All 5 key assertions PASS: volume>20, 5 presentations (60MG, 120MG, 60MG/ML, SEM DOSAGEM), outlier filtering working, realistic avg R$890, 120MG exists with higher prices (R$1428). Frontend displays Big Numbers, grouped apresentações with expand/collapse, item details with PNCP source.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_precos_pncp_integration.py",
+    "/app/test_reports/pytest/pytest_results_precos_pncp.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: GET /api/precos/search?q=Prolia returns 57-69 results (was 2 before fix)",
+    "VERIFIED: Response 'apresentacoes' shows 5 different presentations: DENOSUMAB 60MG, DENOSUMAB SEM DOSAGEM, DENOSUMAB 60MG/ML, DENOSUMAB 120MG, PROLIA 60MG/ML",
+    "VERIFIED: 120MG presentation has higher price (R$ 1428.43 avg) than 60MG (R$ 863.89 avg) - different product correctly identified",
+    "VERIFIED: Outlier filtering working - no results > R$ 50000 (R$ 2M outlier removed)",
+    "VERIFIED: Average price R$ 890.89 is realistic (within 500-2000 range)",
+    "VERIFIED: Frontend Big Numbers display: MENOR R$ 410,53 | MÉDIO R$ 891,06 | MAIOR R$ 1.635,19",
+    "VERIFIED: Frontend shows 5 APRESENTAÇÕES DISTINTAS badge",
+    "VERIFIED: Apresentação expand/collapse working - shows item details table",
+    "VERIFIED: Item table columns: ÓRGÃO COMPRADOR, UF, DESCRIÇÃO, QTD, VALOR UNITÁRIO, DATA, FONTE",
+    "VERIFIED: Rate limiting handled - no 429 errors in final response",
+    "CODE QUALITY: precos_service.py uses asyncio.Semaphore(15) for parallel processing",
+    "CODE QUALITY: Retry/backoff for 429 rate limit errors implemented correctly"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_precos_pncp_integration.py"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all Preços tab features verified)"
+  },
+  "test_credentials": "None required - public PNCP API",
+  "seed_data_creation": "None - uses live PNCP government portal data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Preços PNCP integration fully tested. Key improvements verified: volume increased from 2 to 57+ results, 5 different presentations grouped, outlier filtering removes extreme values, realistic averages displayed. Frontend data-testids: precos-tab, precos-search-input, precos-search-btn, precos-minimo, precos-medio, precos-maximo, precos-total, precos-apresentacoes. Note: PNCP API can take 20-60 seconds. Use use_cache=false for fresh data. Backend pytest tests in test_precos_pncp_integration.py.",
+  "features_tested": {
+    "volume_test": {
+      "status": "PASS",
+      "expected": "> 20 results",
+      "actual": "57-69 results",
+      "improvement": "from 2 to 57+ (28x increase)"
+    },
+    "presentations_test": {
+      "status": "PASS",
+      "expected": ">= 3 presentations",
+      "actual": "5 presentations",
+      "details": ["DENOSUMAB 60MG (19)", "DENOSUMAB SEM DOSAGEM (18-25)", "DENOSUMAB 60MG/ML (15)", "DENOSUMAB 120MG (4)", "PROLIA 60MG/ML (1)"]
+    },
+    "120mg_higher_price": {
+      "status": "PASS",
+      "details": "120MG avg R$ 1428.43 > 60MG avg R$ 863.89"
+    },
+    "outlier_filtering": {
+      "status": "PASS",
+      "expected": "no valor_unitario > 50000",
+      "actual": "all values < R$ 2000"
+    },
+    "realistic_average": {
+      "status": "PASS",
+      "expected": "500-2000",
+      "actual": "R$ 890.89"
+    },
+    "rate_limiting": {
+      "status": "PASS",
+      "details": "Search completes without 429 errors"
+    },
+    "frontend_big_numbers": {
+      "status": "PASS",
+      "details": "MENOR R$ 410,53 | MÉDIO R$ 891,06 | MAIOR R$ 1.635,19"
+    },
+    "frontend_apresentacoes": {
+      "status": "PASS",
+      "details": "5 APRESENTAÇÕES DISTINTAS with expand/collapse"
+    }
+  },
+  "api_verification": {
+    "GET /api/precos/search?q=Prolia&use_cache=false": {
+      "status": 200,
+      "total_results": 57,
+      "apresentacoes_count": 5,
+      "apresentacoes": [
+        {"nome": "DENOSUMAB 60MG", "total": 19, "preco_medio": 863.89},
+        {"nome": "DENOSUMAB SEM DOSAGEM", "total": 18, "preco_medio": 857.26},
+        {"nome": "DENOSUMAB 60MG/ML", "total": 15, "preco_medio": 832.15},
+        {"nome": "DENOSUMAB 120MG", "total": 4, "preco_medio": 1428.43},
+        {"nome": "PROLIA 60MG/ML", "total": 1, "preco_medio": 740.09}
+      ],
+      "agregacoes": {
+        "minimo": 410.53,
+        "medio": 890.89,
+        "maximo": 1635.19,
+        "mediana": 831.49
+      }
+    }
+  },
+  "screenshots": [
+    ".screenshots/precos_results_test.png - Full results showing Big Numbers and apresentações",
+    ".screenshots/precos_input_test.png - Search input with Prolia typed"
+  ]
+}

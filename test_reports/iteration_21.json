@@ -1,0 +1,145 @@
+{
+  "summary": "ANVISA v3 Janela de Importação - All features tested successfully. Fixed bug in cruzar-licitacoes endpoint (wrong function import). Backend: 10/10 tests passed. Frontend: All 10 features verified via Playwright.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_anvisa_v3_janela.py",
+    "/app/test_reports/pytest/pytest_results_anvisa_v3.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "FIXED: ImportError in server.py line 1266 - 'calcular_indice_oportunidade' was incorrectly named, should be 'calcular_indice' (as defined in desabastecimento_service.py)",
+    "VERIFIED: POST /api/anvisa/atualizar returns coletados >= 0, processados >= 0, estatisticas with janelas_abertas field",
+    "VERIFIED: GET /api/anvisa/alertas returns alerts with all v3 fields: medicamento_detectado, principio_ativo, tipo_alerta, situacao, risco, oportunidade, janela_importacao (boolean), motivo_janela, indice_oportunidade (0-100), gatilhos (array), fonte (string)",
+    "VERIFIED: Alertas sorted by indice_oportunidade DESC",
+    "VERIFIED: POST /api/anvisa/cruzar-licitacoes works with new field names (medicamento_detectado, principio_ativo)",
+    "VERIFIED: Frontend title shows 'JANELA ANVISA' with 3 sources mentioned (ANVISA + DOU + Votos Diretoria)",
+    "VERIFIED: Stats cards include 'JANELAS ABERTAS' card with red gradient (shows 40)",
+    "VERIFIED: Table has 11 columns: Medicamento, Princípio Ativo, Tipo Alerta, Situação, Fonte, Risco, Oportunidade, Janela, Índice, Lic., Ação",
+    "VERIFIED: 'JANELAS DE IMPORTAÇÃO ABERTAS' section appears showing 40 medicamentos with janela_importacao=true",
+    "VERIFIED: Cruzar Licitações and Atualizar Fontes buttons work correctly",
+    "VERIFIED: Buscar button navigates to search tab with medication name populated"
+  ],
+  "updated_files": [
+    "/app/backend/server.py",
+    "/app/backend/tests/test_anvisa_v3_janela.py"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 tests passed in 77.52s)",
+    "frontend": "100% (all 10 features verified via Playwright)"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "68 alerts in MongoDB with 40 having janela_importacao=true (from ANVISA Diretoria Colegiada Votos scrape)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "ANVISA v3 Janela de Importação fully tested. Key changes from v20: (1) Added JANELA column (11th column), (2) janelas_abertas stat card with red gradient, (3) JANELAS DE IMPORTAÇÃO ABERTAS section shows when janela_importacao=true. Currently 68 alerts with 40 having open import windows. All data-testid attributes working correctly.",
+  "features_tested": {
+    "backend_atualizar_coletados_3_sources": {
+      "status": "PASS",
+      "details": "POST /api/anvisa/atualizar returns coletados >= 0 from 3 sources (ANVISA news, DOU, ANVISA votos)"
+    },
+    "backend_atualizar_janelas_abertas_stat": {
+      "status": "PASS",
+      "details": "estatisticas includes janelas_abertas field"
+    },
+    "backend_alertas_v3_required_fields": {
+      "status": "PASS",
+      "details": "Each alert has: medicamento_detectado, principio_ativo, tipo_alerta, situacao, risco, oportunidade, janela_importacao (bool), motivo_janela, indice_oportunidade (0-100), gatilhos (array), fonte (string)"
+    },
+    "backend_alertas_sorted_by_indice_desc": {
+      "status": "PASS",
+      "details": "Alerts sorted by indice_oportunidade DESC"
+    },
+    "backend_indice_range_0_100": {
+      "status": "PASS",
+      "details": "All indice_oportunidade values in range 0-100"
+    },
+    "backend_janela_importacao_is_boolean": {
+      "status": "PASS",
+      "details": "janela_importacao field is boolean (40 true, 28 false)"
+    },
+    "backend_gatilhos_structure": {
+      "status": "PASS",
+      "details": "gatilhos array contains objects with id, label, peso, keyword"
+    },
+    "backend_cruzar_licitacoes_new_field_names": {
+      "status": "PASS",
+      "details": "POST /api/anvisa/cruzar-licitacoes works with medicamento_detectado, principio_ativo"
+    },
+    "backend_stats_janelas_abertas": {
+      "status": "PASS",
+      "details": "GET /api/anvisa/stats includes janelas_abertas (currently 40)"
+    },
+    "backend_alertas_show_fonte": {
+      "status": "PASS",
+      "details": "Alerts show fonte (ANVISA Diretoria Colegiada, Notícias ANVISA, DOU)"
+    },
+    "frontend_title_3_sources": {
+      "status": "PASS",
+      "details": "Title shows 'JANELA ANVISA' with 'Fontes: ANVISA + DOU + Votos Diretoria'"
+    },
+    "frontend_janelas_abertas_card": {
+      "status": "PASS",
+      "details": "Stats cards include 'JANELAS ABERTAS' card with red gradient showing 40"
+    },
+    "frontend_table_11_columns": {
+      "status": "PASS",
+      "details": "Table has 11 columns: Medicamento, Princípio Ativo, Tipo Alerta, Situação, Fonte, Risco, Oportunidade, Janela, Índice, Lic., Ação"
+    },
+    "frontend_janelas_importacao_section": {
+      "status": "PASS",
+      "details": "'JANELAS DE IMPORTAÇÃO ABERTAS' section appears with 40 medicamentos"
+    },
+    "frontend_cruzar_atualizar_buttons": {
+      "status": "PASS",
+      "details": "Both buttons clickable and functional"
+    },
+    "frontend_buscar_navigation": {
+      "status": "PASS",
+      "details": "Buscar button navigates to search tab with medication name"
+    }
+  },
+  "api_verification": {
+    "POST /api/anvisa/atualizar": {
+      "status": 200,
+      "response_keys": ["coletados", "processados", "estatisticas"],
+      "estatisticas_keys": ["total_alertas", "risco_alto", "risco_medio", "janelas_abertas", "oportunidades_importacao", "oportunidades_licitacao", "oportunidade_alta", "por_tipo"]
+    },
+    "GET /api/anvisa/alertas": {
+      "status": 200,
+      "total_alerts": 68,
+      "janela_importacao_true": 40,
+      "janela_importacao_false": 28,
+      "alert_fields_verified": ["medicamento_detectado", "principio_ativo", "tipo_alerta", "situacao", "risco", "oportunidade", "janela_importacao", "motivo_janela", "indice_oportunidade", "gatilhos", "fonte"],
+      "sorted_by": "indice_oportunidade DESC"
+    },
+    "POST /api/anvisa/cruzar-licitacoes": {
+      "status": 200,
+      "cruzamento_fields": ["medicamento_detectado", "principio_ativo", "indice_oportunidade", "licitacoes_encontradas", "licitacoes"]
+    },
+    "GET /api/anvisa/stats": {
+      "status": 200,
+      "fields": ["total_alertas", "risco_alto", "risco_medio", "janelas_abertas", "oportunidades_importacao", "oportunidades_licitacao", "oportunidade_alta", "por_tipo"],
+      "values": {"total_alertas": 68, "janelas_abertas": 40}
+    }
+  },
+  "bug_fixed": {
+    "file": "/app/backend/server.py",
+    "line": 1266,
+    "issue": "ImportError: cannot import name 'calcular_indice_oportunidade' from 'services.desabastecimento_service'",
+    "fix": "Changed import and function call from 'calcular_indice_oportunidade' to 'calcular_indice' (correct function name in desabastecimento_service.py)"
+  },
+  "screenshots": [
+    ".screenshots/anvisa_v3_header.png - Shows title, subtitle with 3 sources, and stats cards including JANELAS ABERTAS",
+    ".screenshots/anvisa_v3_table_full.png - Shows table with 11 columns including JANELA column",
+    ".screenshots/anvisa_v3_buscar_navigation.png - Shows navigation to search after clicking Buscar button",
+    ".screenshots/anvisa_v3_final.png - Final state showing JANELAS DE IMPORTAÇÃO ABERTAS section"
+  ]
+}

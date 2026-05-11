@@ -1,0 +1,122 @@
+{
+  "summary": "Esclarecimento feature v25 - All backend and frontend tests passed. 3 action buttons per ANVISA card working. Esclarecimento modal with company dropdown, text generation (Gemini AI), copy button, and PROVA DOCUMENTAL section all verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_esclarecimento.py",
+    "/app/test_reports/pytest/pytest_esclarecimento.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: POST /api/anvisa/esclarecimento generates text with empresa data when empresa_id=c1 (HC IMPORTAÇÕES, CNPJ 31.958.700/0001-17)",
+    "VERIFIED: POST /api/anvisa/esclarecimento returns 400 error when medicamento is empty",
+    "VERIFIED: POST /api/anvisa/atualizar returns immediately with status=processando (background processing)",
+    "VERIFIED: GET /api/anvisa/alertas returns alerts sorted by indice_oportunidade descending",
+    "VERIFIED: ANVISA tab shows 3 buttons per card: Localizar Editais (blue bg-blue-600), Ver Prova Documental (amber bg-amber-500), Gerar Esclarecimento (purple bg-purple-600)",
+    "VERIFIED: Clicking 'Localizar Editais' navigates to Pesquisa tab with medicine name pre-filled in search",
+    "VERIFIED: Clicking 'Gerar Esclarecimento' opens modal with medicine info and company dropdown",
+    "VERIFIED: Modal company dropdown shows companies with names from the empresas collection (HC IMPORTAÇÕES, Smart Medical)",
+    "VERIFIED: Clicking 'GERAR TEXTO' calls API and displays generated text (4247 chars with Gemini, ~18s generation time)",
+    "VERIFIED: Generated text includes empresa name (HC IMPORTAÇÕES EXPORTAÇÕES LTDA), CNPJ (31.958.700/0001-17), address, and medicine name",
+    "VERIFIED: 'Copiar Texto' button appears after text generation and works",
+    "VERIFIED: Modal shows 'PROVA DOCUMENTAL' section with ANVISA link for attachment"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_esclarecimento.py"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 tests passed)",
+    "frontend": "100% (all esclarecimento features verified via Playwright)"
+  },
+  "test_credentials": "None required - all public APIs",
+  "seed_data_creation": "26 alerts present from previous ANVISA+DOU scraping. Companies: c1=HC IMPORTAÇÕES (CNPJ 31.958.700/0001-17), c2=Smart Medical Filial SC",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Esclarecimento feature fully tested and working. Key data-testids: anvisa-esclarecimento-{idx} (button), esclarecimento-modal, esclarecimento-empresa-select, esclarecimento-gerar-btn, esclarecimento-texto, esclarecimento-copiar-btn. The API may take 15-20 seconds to generate text when using Gemini AI; fallback template is used if EMERGENT_LLM_KEY is not set. Company c1 (HC IMPORTAÇÕES) has complete data for testing.",
+  "features_tested": {
+    "POST_anvisa_esclarecimento_with_empresa": {
+      "status": "PASS",
+      "details": "Returns generated text with empresa name, CNPJ, and medicine info"
+    },
+    "POST_anvisa_esclarecimento_empty_medicamento": {
+      "status": "PASS",
+      "details": "Returns 400 error with 'Medicamento é obrigatório' message"
+    },
+    "POST_anvisa_atualizar_background": {
+      "status": "PASS",
+      "details": "Returns immediately with status=processando, scraper runs in background"
+    },
+    "GET_anvisa_alertas_sorted": {
+      "status": "PASS",
+      "details": "26 alerts returned, sorted by indice_oportunidade descending"
+    },
+    "three_buttons_per_card": {
+      "status": "PASS",
+      "details": "Localizar Editais (blue), Ver Prova Documental (amber), Gerar Esclarecimento (purple)"
+    },
+    "localizar_editais_navigation": {
+      "status": "PASS",
+      "details": "Navigates to Pesquisa tab with medicine name pre-filled (e.g., 'Tirzepatida')"
+    },
+    "esclarecimento_modal_opens": {
+      "status": "PASS",
+      "details": "Modal opens with medicine info, situacao, principio_ativo, and link to publicacao oficial"
+    },
+    "company_dropdown_populated": {
+      "status": "PASS",
+      "details": "Shows companies with names: HC IMPORTAÇÕES EXPORTAÇÕES LTDA — 31.958.700/0001-17, Smart Medical Filial SC — 22.222.222/0001-22"
+    },
+    "gerar_texto_button": {
+      "status": "PASS",
+      "details": "Calls /api/anvisa/esclarecimento and displays generated text"
+    },
+    "generated_text_content": {
+      "status": "PASS",
+      "details": "4247 chars including empresa name, CNPJ, address, medicine name, desabastecimento info"
+    },
+    "copiar_texto_button": {
+      "status": "PASS",
+      "details": "Button appears after text generation, copies to clipboard"
+    },
+    "prova_documental_section": {
+      "status": "PASS",
+      "details": "Shows 'PROVA DOCUMENTAL (ANEXAR AO PROCESSO)' with ANVISA link"
+    }
+  },
+  "api_verification": {
+    "POST /api/anvisa/esclarecimento": {
+      "status": 200,
+      "with_empresa_c1": "Returns texto with empresa name, CNPJ, medicine info",
+      "empty_medicamento": "Returns 400 with error message",
+      "generation_time": "15-20 seconds with Gemini AI"
+    },
+    "POST /api/anvisa/atualizar": {
+      "status": 200,
+      "response": "{ status: 'processando', mensagem: '...' }",
+      "behavior": "Returns immediately, scraper runs in background"
+    },
+    "GET /api/anvisa/alertas": {
+      "status": 200,
+      "total_alerts": 26,
+      "sorted_by": "indice_oportunidade DESC"
+    },
+    "GET /api/empresas": {
+      "status": 200,
+      "count": "2+ empresas with names",
+      "c1": "HC IMPORTAÇÕES EXPORTAÇÕES LTDA"
+    }
+  },
+  "screenshots": [
+    ".screenshots/escl_dashboard.png - ANVISA dashboard with 3 buttons per card",
+    ".screenshots/escl_modal.png - Esclarecimento modal with company dropdown",
+    ".screenshots/escl_text_generated.png - Generated text with empresa data and PROVA DOCUMENTAL section",
+    ".screenshots/escl_search.png - Search tab populated with medicine name after Localizar Editais click"
+  ]
+}

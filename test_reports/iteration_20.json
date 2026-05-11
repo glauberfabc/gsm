@@ -1,0 +1,136 @@
+{
+  "summary": "ANVISA Structured Fields v20 - All 12 features tested and PASSING. Backend: 9/9 tests passed. Frontend: All 10-column table layout verified with new structured fields working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_anvisa_v20_structured_fields.py",
+    "/app/test_reports/pytest/pytest_results_anvisa_v20.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: POST /api/anvisa/atualizar returns processados > 0 with estatisticas including demanda_publica_critica and oportunidade_alta",
+    "VERIFIED: GET /api/anvisa/alertas returns alerts with: medicamento_detectado (specific names), principio_ativo, tipo_alerta (specific types like recolhimento, proibição, desabastecimento), situacao, risco (ALTO/MEDIO/BAIXO), oportunidade, indice_oportunidade (0-100 number), gatilhos (array with id/label/peso/keyword)",
+    "VERIFIED: Alertas sorted by indice_oportunidade DESC - first alert has 50%, followed by 45%",
+    "VERIFIED: POST /api/anvisa/cruzar-licitacoes returns cruzamento items with medicamento_detectado, principio_ativo, tipo_alerta, indice_oportunidade (recalculated with licitações bonus)",
+    "VERIFIED: Frontend table header shows all 10 columns: MEDICAMENTO, PRINCÍPIO ATIVO, TIPO DE ALERTA, SITUAÇÃO, FONTE, RISCO, OPORTUNIDADE, ÍNDICE, LICITAÇÕES, AÇÃO",
+    "VERIFIED: Medicamento column shows medicamento_detectado name with 'Ver fonte' link",
+    "VERIFIED: Princípio Ativo column shows principio_ativo in blue text (text-blue-700 class)",
+    "VERIFIED: Tipo de Alerta shows colored badges: DESABASTECIMENTO (red), RECOLHIMENTO (amber), PROIBIÇÃO (red)",
+    "VERIFIED: Situação column shows situation text AND gatilho regulatory badges (purple badges like 'Risco de Desabasteci...')",
+    "VERIFIED: Índice column shows percentage number (50%, 45%) AND visual progress bar with color coding (red>=70, amber>=40, gray<40)",
+    "VERIFIED: 'Cruzar com Licitações' button works - expands licitações rows inline with tender details",
+    "VERIFIED: Buscar and Monitorar buttons in Ação column still work correctly"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_anvisa_v20_structured_fields.py"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 tests passed in 39.42s)",
+    "frontend": "100% (all 12 features verified via Playwright)"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "Used existing 27 alerts in MongoDB from ANVISA scrape",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "ANVISA structured fields v20 fully tested. New fields: medicamento_detectado, principio_ativo, tipo_alerta (specific types), gatilhos (array), indice_oportunidade (0-100). Stats include demanda_publica_critica and oportunidade_alta (count of alerts with indice >= 70). Currently 27 alerts with highest indice at 50%, so oportunidade_alta=0. POST /api/anvisa/cruzar-licitacoes takes 15-20s. All data-testid attributes working.",
+  "features_tested": {
+    "backend_atualizar_processados_estatisticas": {
+      "status": "PASS",
+      "details": "POST /api/anvisa/atualizar returns processados >= 0 with estatisticas including demanda_publica_critica and oportunidade_alta"
+    },
+    "backend_alertas_structured_fields": {
+      "status": "PASS",
+      "details": "Each alert has: medicamento_detectado, principio_ativo, tipo_alerta, situacao, risco, oportunidade, indice_oportunidade, gatilhos"
+    },
+    "backend_alertas_sorted_by_indice": {
+      "status": "PASS",
+      "details": "Alertas sorted by indice_oportunidade DESC"
+    },
+    "backend_indice_is_number_0_100": {
+      "status": "PASS",
+      "details": "indice_oportunidade is number in range 0-100"
+    },
+    "backend_gatilhos_structure": {
+      "status": "PASS",
+      "details": "gatilhos is array with objects having id, label, peso, keyword"
+    },
+    "backend_tipo_alerta_specific_types": {
+      "status": "PASS",
+      "details": "tipo_alerta has specific types: desabastecimento, recolhimento, proibição, alerta segurança, etc."
+    },
+    "backend_cruzamento_new_fields": {
+      "status": "PASS",
+      "details": "Cruzamento items have medicamento_detectado, principio_ativo, tipo_alerta, indice_oportunidade"
+    },
+    "frontend_table_10_columns": {
+      "status": "PASS",
+      "details": "Table header shows: MEDICAMENTO, PRINCÍPIO ATIVO, TIPO DE ALERTA, SITUAÇÃO, FONTE, RISCO, OPORTUNIDADE, ÍNDICE, LICITAÇÕES, AÇÃO"
+    },
+    "frontend_medicamento_column": {
+      "status": "PASS",
+      "details": "Shows medicamento_detectado name with 'Ver fonte' link"
+    },
+    "frontend_principio_ativo_blue": {
+      "status": "PASS",
+      "details": "Princípio Ativo column shows text in blue (text-blue-700)"
+    },
+    "frontend_tipo_alerta_colored_badges": {
+      "status": "PASS",
+      "details": "Tipo de Alerta shows colored badges: DESABASTECIMENTO (red), RECOLHIMENTO (amber), PROIBIÇÃO (red)"
+    },
+    "frontend_situacao_with_gatilhos": {
+      "status": "PASS",
+      "details": "Situação column shows situation text AND gatilho regulatory badges (purple)"
+    },
+    "frontend_indice_percentage_progress_bar": {
+      "status": "PASS",
+      "details": "Índice column shows percentage (50%, 45%) AND visual progress bar"
+    },
+    "frontend_cruzar_licitacoes_button": {
+      "status": "PASS",
+      "details": "'Cruzar com Licitações' button works and expandable rows show tenders"
+    },
+    "frontend_buscar_monitorar_buttons": {
+      "status": "PASS",
+      "details": "Buscar navigates to search, Monitorar shows toast"
+    }
+  },
+  "api_verification": {
+    "POST /api/anvisa/atualizar": {
+      "status": 200,
+      "response_keys": ["coletados", "processados", "estatisticas"],
+      "estatisticas_keys": ["total_alertas", "risco_alto", "risco_medio", "demanda_publica_critica", "oportunidade_alta"]
+    },
+    "GET /api/anvisa/alertas": {
+      "status": 200,
+      "total_alerts": 27,
+      "alert_fields_verified": ["medicamento_detectado", "principio_ativo", "tipo_alerta", "situacao", "risco", "oportunidade", "indice_oportunidade", "gatilhos"],
+      "sorted_by": "indice_oportunidade DESC",
+      "sample_indice_values": [50, 45, 45, 45, 45]
+    },
+    "POST /api/anvisa/cruzar-licitacoes": {
+      "status": 200,
+      "response_time": "15-20 seconds",
+      "cruzamento_fields": ["medicamento_detectado", "principio_ativo", "tipo_alerta", "indice_oportunidade", "licitacoes_encontradas", "licitacoes"]
+    },
+    "GET /api/anvisa/stats": {
+      "status": 200,
+      "fields": ["total_alertas", "risco_alto", "risco_medio", "oportunidades_importacao", "oportunidades_licitacao", "demanda_publica_critica", "oportunidade_alta", "por_tipo"],
+      "values": {"total_alertas": 27, "risco_alto": 12, "risco_medio": 3, "oportunidade_alta": 0}
+    }
+  },
+  "screenshots": [
+    ".screenshots/anvisa_table_header.png - Shows 10-column table header",
+    ".screenshots/anvisa_first_row.png - Shows first alert with all structured fields",
+    ".screenshots/anvisa_full_section.png - Shows stats cards and table",
+    ".screenshots/anvisa_after_cruzamento.png - Shows licitações expanded",
+    ".screenshots/anvisa_buscar_navigation.png - Shows search after clicking Buscar"
+  ]
+}

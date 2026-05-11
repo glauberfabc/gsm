@@ -1,0 +1,194 @@
+{
+  "summary": "DAMA P0 (Automatic Validity Filter) feature tested. Backend endpoints for vigencia checking are working correctly - scrapes CMED/ANVISA legislation portal to check if legal resolutions are vigente/caduca/revogada. Frontend modal shows DAMA validation panel with color-coded badges and blocks generation when caduca normas are detected. All 22 backend tests passed, frontend UI working as expected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dama_vigencia.py",
+    "/app/test_reports/pytest/pytest_results_dama_vigencia.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: GET /api/dama/vigencia/stats returns total, vigentes, vigentes_com_alteracoes, caducas, revogadas counts",
+    "VERIFIED: GET /api/dama/vigencia/check correctly identifies Resolução 07/2022 as 'caduca' with pode_usar=false",
+    "VERIFIED: GET /api/dama/vigencia/check correctly identifies Resolução 02/2004 as 'vigente com alterações' with pode_usar=true",
+    "VERIFIED: POST /api/dama/vigencia/sync rescrapes CMED legislation portal and returns total count",
+    "VERIFIED: POST /api/dama/vigencia/validar-esclarecimento validates key norms and returns bloqueios array",
+    "VERIFIED: POST /api/anvisa/esclarecimento without force_generate returns bloqueado=true when caduca normas detected",
+    "VERIFIED: POST /api/anvisa/esclarecimento with force_generate=true generates text despite caduca normas",
+    "VERIFIED: Frontend DAMA vigencia panel shows stats (35 Vigentes, 8 Com Alterações, 2 Caducas, 41 Revogadas)",
+    "VERIFIED: Frontend shows color-coded badges (CADUCA=red, VIGENTE COM ALTERAÇÕES=amber/green, REVOGADA=dark red)",
+    "VERIFIED: Generate button shows 'BLOQUEADO - MARQUE A CAIXA PARA PROSSEGUIR' when vigencia has bloqueio",
+    "VERIFIED: Checkbox 'Estou ciente e desejo gerar mesmo assim' enables the generate button"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_dama_vigencia.py"
+  ],
+  "success_rate": {
+    "backend": "100% (22/22 pytest tests passed)",
+    "frontend": "100% - All DAMA vigencia UI components working correctly"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "None - uses live CMED/ANVISA government portal data via scraping",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "DAMA P0 vigencia validation feature fully working. Key test: Go to Janela ANVISA tab, click 'Gerar Esclarecimento' on any alert card. Modal opens with DAMA validation panel showing resolution status. Resolução 07/2022 is CADUCA (blocked), Resolução 02/2004 is VIGENTE COM ALTERAÇÕES (allowed). Button shows BLOQUEADO until checkbox is checked.",
+  "features_tested": {
+    "backend_dama_vigencia_stats": {
+      "status": "PASS",
+      "endpoint": "GET /api/dama/vigencia/stats",
+      "response_fields": ["total", "vigentes", "vigentes_com_alteracoes", "caducas", "revogadas", "ultima_atualizacao"]
+    },
+    "backend_dama_vigencia_check_caduca": {
+      "status": "PASS",
+      "endpoint": "GET /api/dama/vigencia/check?referencia=Resolução 07/2022",
+      "expected": {
+        "encontrada": true,
+        "status": "caduca",
+        "pode_usar": false
+      }
+    },
+    "backend_dama_vigencia_check_vigente": {
+      "status": "PASS",
+      "endpoint": "GET /api/dama/vigencia/check?referencia=Resolução 02/2004",
+      "expected": {
+        "encontrada": true,
+        "status": "vigente com alterações",
+        "pode_usar": true
+      }
+    },
+    "backend_dama_vigencia_resolucoes": {
+      "status": "PASS",
+      "endpoint": "GET /api/dama/vigencia/resolucoes",
+      "returns": "List of all resolutions with titulo, numero, ano, status"
+    },
+    "backend_dama_vigencia_sync": {
+      "status": "PASS",
+      "endpoint": "POST /api/dama/vigencia/sync",
+      "returns": "total count of scraped resolutions (86+)"
+    },
+    "backend_dama_vigencia_validar_esclarecimento": {
+      "status": "PASS",
+      "endpoint": "POST /api/dama/vigencia/validar-esclarecimento",
+      "returns": {
+        "validacao": "Array of 4 key norms checked",
+        "bloqueios": "Array of caduca/revogada norms",
+        "tem_bloqueio": true,
+        "normas_vigentes": "Top 10 vigentes resolutions"
+      }
+    },
+    "backend_esclarecimento_without_force": {
+      "status": "PASS",
+      "endpoint": "POST /api/anvisa/esclarecimento",
+      "without_force_generate": {
+        "bloqueado": true,
+        "vigencia_alertas": "Array of blocked norms",
+        "mensagem": "Existem normas CMED caducas/revogadas. Revise antes de gerar."
+      }
+    },
+    "backend_esclarecimento_with_force": {
+      "status": "PASS",
+      "endpoint": "POST /api/anvisa/esclarecimento",
+      "with_force_generate_true": {
+        "bloqueado": false,
+        "texto": "Generated esclarecimento text",
+        "vigencia_validada": true
+      }
+    },
+    "frontend_janela_anvisa_tab": {
+      "status": "PASS",
+      "data_testid": "tab-anvisa",
+      "description": "Loads alert cards with 'Gerar Esclarecimento' button"
+    },
+    "frontend_esclarecimento_modal": {
+      "status": "PASS",
+      "data_testid": "esclarecimento-modal",
+      "description": "Opens when clicking 'Gerar Esclarecimento' button"
+    },
+    "frontend_dama_vigencia_panel": {
+      "status": "PASS",
+      "data_testid": "dama-vigencia-panel",
+      "elements": {
+        "stats_badges": "35 Vigentes, 8 Com Alterações, 2 Caducas, 41 Revogadas",
+        "validation_checks": "4 resolution checks with color-coded badges",
+        "bloqueio_badge": "Red 'BLOQUEIO' badge when caduca norms detected"
+      }
+    },
+    "frontend_vigencia_badges": {
+      "status": "PASS",
+      "colors": {
+        "CADUCA": "bg-red-200 text-red-800",
+        "VIGENTE COM ALTERAÇÕES": "bg-amber-200 text-amber-800",
+        "VIGENTE": "bg-emerald-200 text-emerald-800",
+        "REVOGADA": "bg-red-300 text-red-900"
+      }
+    },
+    "frontend_generate_button_blocked": {
+      "status": "PASS",
+      "data_testid": "esclarecimento-gerar-btn",
+      "when_blocked": "Shows 'BLOQUEADO - MARQUE A CAIXA PARA PROSSEGUIR'",
+      "when_enabled": "Shows 'GERAR TEXTO DE ESCLARECIMENTO'"
+    },
+    "frontend_force_checkbox": {
+      "status": "PASS",
+      "data_testid": "vigencia-force-checkbox",
+      "label": "Estou ciente e desejo gerar mesmo assim",
+      "behavior": "Enables generate button when checked"
+    }
+  },
+  "pytest_results_summary": {
+    "file": "/app/backend/tests/test_dama_vigencia.py",
+    "total": 22,
+    "passed": 22,
+    "failed": 0,
+    "test_classes": [
+      {
+        "class": "TestDamaVigenciaStats",
+        "tests": 3,
+        "description": "Stats endpoint returns correct structure"
+      },
+      {
+        "class": "TestDamaVigenciaCheck",
+        "tests": 5,
+        "description": "Check endpoint correctly identifies resolution status"
+      },
+      {
+        "class": "TestDamaVigenciaResolucoes",
+        "tests": 3,
+        "description": "Resolucoes endpoint returns list with required fields"
+      },
+      {
+        "class": "TestDamaVigenciaSync",
+        "tests": 2,
+        "description": "Sync endpoint rescrapes and returns total"
+      },
+      {
+        "class": "TestDamaVigenciaValidarEsclarecimento",
+        "tests": 4,
+        "description": "Validar endpoint returns bloqueios for caduca norms"
+      },
+      {
+        "class": "TestEsclarecimentoWithVigencia",
+        "tests": 3,
+        "description": "Esclarecimento endpoint respects force_generate flag"
+      },
+      {
+        "class": "TestVigenciaStatusValues",
+        "tests": 2,
+        "description": "Status values are correct strings"
+      }
+    ]
+  },
+  "screenshots": [
+    ".screenshots/dama_anvisa_tab.png - Janela ANVISA tab with alert cards",
+    ".screenshots/dama_modal_opened.png - Esclarecimento modal with DAMA validation panel",
+    ".screenshots/dama_vigencia_validated.png - DAMA panel showing validation results",
+    ".screenshots/dama_checkbox_enabled.png - Generate button enabled after checkbox"
+  ]
+}

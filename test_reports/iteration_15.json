@@ -1,0 +1,114 @@
+{
+  "summary": "GSM v76.0 Testing Complete - All 7 features verified. Backend: 10/10 tests passed. /api/search/unified returns 38+ results for canabidiol with CLONE_CONLICITACAO source and mongodb_proprio > 0. /api/clone/status shows 9637+ editais clonados from 48 portais. Effecti proxy NOT initialized (verified in startup logs). Frontend: Search shows results with portal names (www.compras.rj.gov.br, PNCP, etc), Ver Itens button expands to show items text with CANABIDIOL highlighted in yellow, insulina search returns 88 results.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "MongoDB Index",
+        "issue": "Index name conflict on editais_normalizados (idx_busca_texto vs idx_text_search) - not blocking, search works"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_gsm_v76.py",
+    "/app/test_reports/pytest/pytest_results_v76.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: /api/search/unified?q=canabidiol returns 38+ results with fonte=CLONE_CONLICITACAO",
+    "VERIFIED: /api/clone/status returns total_editais=9637, portais=48 (PNCP, Conlicitação, ComprasNet, etc)",
+    "VERIFIED: fontes field shows mongodb_proprio > 0 and pncp_tempo_real counts",
+    "VERIFIED: Effecti proxy NOT initialized in startup logs (checked 18:56 startup)",
+    "VERIFIED: Frontend search shows results with portal names (www.compras.rj.gov.br (RJ), PNCP (PA), etc)",
+    "VERIFIED: Ver Itens button works - expands to show items text with keyword highlighting",
+    "VERIFIED: CANABIDIOL highlighted in yellow (bg-yellow-300) in objeto and items",
+    "VERIFIED: insulina search returns 88 results with Ver Itens buttons"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_gsm_v76.py"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (all 7 features verified)"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "None - using existing 9637+ cloned editais",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "GSM v76.0 is 100% independent from Effecti. Uses MongoDB editais_clone collection (9637+ editais) + PNCP public API. Search endpoint is /api/search/unified. Clone status at /api/clone/status. Frontend uses highlightText function with bg-yellow-300 for keyword highlighting. Ver Itens shows itens_texto field from cloned data.",
+  "features_tested": {
+    "1_backend_search_unified_canabidiol": {
+      "status": "PASS",
+      "details": "GET /api/search/unified?q=canabidiol returns 38 results with CLONE_CONLICITACAO source and mongodb_proprio > 0"
+    },
+    "2_backend_clone_status": {
+      "status": "PASS",
+      "details": "GET /api/clone/status returns total_editais=9637, portais=48, independente=true"
+    },
+    "3_frontend_search_canabidiol": {
+      "status": "PASS",
+      "details": "Search shows 38 editais with portal names (www.compras.rj.gov.br, PNCP, etc)"
+    },
+    "4_frontend_ver_itens_button": {
+      "status": "PASS",
+      "details": "Ver Itens button visible, expands to show items text with keyword highlighting"
+    },
+    "5_frontend_keyword_highlighting": {
+      "status": "PASS",
+      "details": "CANABIDIOL highlighted in yellow (bg-yellow-300) in objeto and items section"
+    },
+    "6_frontend_search_insulina": {
+      "status": "PASS",
+      "details": "Search returns 88 results with Ver Itens buttons"
+    },
+    "7_backend_effecti_not_initialized": {
+      "status": "PASS",
+      "details": "Effecti proxy NOT in startup logs (verified 18:56:00 logs) - system is 100% independent"
+    }
+  },
+  "test_runs": [
+    {
+      "test": "Backend pytest",
+      "result": "PASS",
+      "details": "10/10 tests passed in 15.12s"
+    },
+    {
+      "test": "Frontend Playwright",
+      "result": "PASS",
+      "details": "All UI features verified with screenshots"
+    }
+  ],
+  "screenshots": [
+    ".screenshots/canabidiol_full_results.png",
+    ".screenshots/ver_itens_expanded_canabidiol.png",
+    ".screenshots/insulina_full_results.png"
+  ],
+  "api_verification": {
+    "/api/search/unified?q=canabidiol": {
+      "status": 200,
+      "total": 38,
+      "fontes": {
+        "mongodb_proprio": "38+",
+        "pncp_tempo_real": "available"
+      },
+      "sample_result": {
+        "fonte": "CLONE_CONLICITACAO",
+        "portal_captura": "www.compras.rj.gov.br (RJ)",
+        "objeto": "Registro de Preços para AQUISIÇÃO DE MEDICAMENTO CANABIDIOL..."
+      }
+    },
+    "/api/clone/status": {
+      "status": 200,
+      "total_editais": 9637,
+      "portais_count": 48,
+      "top_portais": ["PNCP (3573)", "Conlicitação (1027)", "ComprasNet (445)"],
+      "independente": true
+    }
+  },
+  "console_errors_detected": 0
+}

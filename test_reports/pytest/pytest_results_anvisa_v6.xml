@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="16" time="154.494" timestamp="2026-03-17T14:56:01.781499+00:00" hostname="agent-env-d38ef6e0-520c-46f9-8d68-5546c1d0b1e0"><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestAnvisaAlertas" name="test_alertas_endpoint_returns_200" time="0.270" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestAnvisaAlertas" name="test_alertas_response_structure" time="0.159" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestAnvisaAlertas" name="test_alertas_sorted_by_indice_oportunidade" time="0.157" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestAnvisaAlertas" name="test_alertas_have_required_fields" time="0.143" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestMedicineNamesCleanliness" name="test_medicine_names_not_na" time="0.153" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestMedicineNamesCleanliness" name="test_medicine_names_are_single_names" time="0.143" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestNoNAValuesInDisplay" name="test_numero_re_not_na" time="0.148" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestNoNAValuesInDisplay" name="test_orgao_destinatario_not_na" time="0.146" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestNoNAValuesInDisplay" name="test_quantidade_autorizada_not_na" time="0.132" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestNoNAValuesInDisplay" name="test_situacao_not_na" time="0.129" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestStatsCorrectness" name="test_stats_have_required_fields" time="0.146" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestStatsCorrectness" name="test_stats_counts_match_data" time="0.167" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestStatsCorrectness" name="test_janelas_abertas_reflects_strict_criteria" time="0.160" /><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestAtualizar" name="test_atualizar_endpoint_returns_200" time="60.148"><failure message="AssertionError: Expected 200, got 502: The preview environment is not responding. It may be starting up.&#10;  &#10;assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_anvisa_v6_na_cleanup.py:259: in test_atualizar_endpoint_returns_200
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 502: The preview environment is not responding. It may be starting up.
+E     
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestAtualizar" name="test_atualizar_returns_statistics" time="60.205"><failure message="requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)">/root/.venv/lib/python3.11/site-packages/requests/models.py:976: in json
+    return complexjson.loads(self.text, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:337: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/json/decoder.py:355: in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+E   json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+backend/tests/test_anvisa_v6_na_cleanup.py:265: in test_atualizar_returns_statistics
+    data = response.json()
+           ^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/requests/models.py:980: in json
+    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+E   requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)</failure></testcase><testcase classname="backend.tests.test_anvisa_v6_na_cleanup.TestSampleData" name="test_print_sample_alerts" time="31.967" /></testsuite></testsuites>

@@ -1,0 +1,95 @@
+{
+  "summary": "Preços (Prices) tab fix verification complete. All tests passed. Searching for 'Prolia' now returns ONLY Denosumabe-related results (2 items), grouped by presentation (DENOSUMABE 60MG 1ML). Big Numbers display correctly with 2 decimal places. No irrelevant results (CANABIDIOL, XOLAIR, EYLIA etc) found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_precos_service.py",
+    "/app/test_reports/pytest/pytest_results_precos.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: GET /api/precos/search?q=Prolia returns ONLY Denosumabe-related results (2 items)",
+    "VERIFIED: Response includes 'apresentacoes' array with grouped results by dosage",
+    "VERIFIED: Each apresentacao has preco_minimo, preco_maximo, preco_medio, preco_mediana fields",
+    "VERIFIED: Big Numbers (Menor/Medio/Maior Preço) display correctly with 2 decimal places",
+    "VERIFIED: Synonym expansion working (Prolia → Denosumabe → Xgeva via EXPANSAO_TERMOS_SAUDE)",
+    "VERIFIED: Post-filtering removes irrelevant PNCP results (no CANABIDIOL, XOLAIR, EYLIA in results)",
+    "VERIFIED: Frontend Preços tab loads and displays results grouped by presentation",
+    "VERIFIED: Apresentacao headers are expandable/collapsible",
+    "VERIFIED: Item table shows Órgão, UF, Descrição, Qtd, Valor Unitário, Data, Fonte columns"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_precos_service.py"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 tests passed)",
+    "frontend": "100% (all Preços tab features verified via Playwright)"
+  },
+  "test_credentials": "None required - public PNCP API data",
+  "seed_data_creation": "None - uses live PNCP government portal data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Preços service with synonym expansion, post-filtering and grouping by presentation is fully tested. Key data-testids: precos-tab, precos-search-input, precos-search-btn, precos-minimo, precos-medio, precos-maximo, precos-total, precos-apresentacoes, apresentacao-header-{idx}. The PNCP API can be slow (up to 15 seconds), use use_cache=false for fresh data. Synonym mapping is in /app/backend/services/busca_service_v2.py EXPANSAO_TERMOS_SAUDE dict.",
+  "features_tested": {
+    "GET_precos_search_prolia": {
+      "status": "PASS",
+      "details": "Returns 2 DENOSUMABE items, no irrelevant medications"
+    },
+    "GET_precos_search_denosumabe": {
+      "status": "PASS",
+      "details": "Returns same relevant results as Prolia search"
+    },
+    "apresentacoes_array_structure": {
+      "status": "PASS",
+      "details": "Response includes apresentacoes array with nome, preco_minimo, preco_maximo, preco_medio, preco_mediana"
+    },
+    "agregacoes_format": {
+      "status": "PASS",
+      "details": "Big Numbers have correct numeric format with 2 decimal places"
+    },
+    "uf_filter": {
+      "status": "PASS",
+      "details": "UF parameter filters results correctly"
+    },
+    "synonym_expansion": {
+      "status": "PASS",
+      "details": "Prolia → Denosumabe → Xgeva expansion working via EXPANSAO_TERMOS_SAUDE"
+    },
+    "post_filtering": {
+      "status": "PASS",
+      "details": "Irrelevant medications (CANABIDIOL, XOLAIR, EYLIA etc) excluded from results"
+    },
+    "grouping_by_presentation": {
+      "status": "PASS",
+      "details": "Results grouped by dosage (e.g., DENOSUMABE 60MG 1ML)"
+    },
+    "frontend_precos_tab_display": {
+      "status": "PASS",
+      "details": "Tab loads, search works, Big Numbers displayed, apresentacoes expandable"
+    }
+  },
+  "api_verification": {
+    "GET /api/precos/search?q=Prolia": {
+      "status": 200,
+      "total_results": 2,
+      "apresentacoes": ["DENOSUMABE 60MG 1ML"],
+      "agregacoes": {
+        "minimo": 766.38,
+        "medio": 798.93,
+        "maximo": 831.49
+      }
+    }
+  },
+  "screenshots": [
+    ".screenshots/precos_tab.png - Preços tab initial state with empty search",
+    ".screenshots/precos_results_prolia.png - Search results for Prolia showing Big Numbers and apresentação",
+    ".screenshots/precos_expanded.png - Expanded apresentação showing item details table"
+  ]
+}

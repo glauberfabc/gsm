@@ -1,0 +1,393 @@
+import React, { useState, useEffect } from 'react';
+import '@/App.css';
+import axios from 'axios';
+import { Search, RefreshCw, MapPin, FileText, Calendar, Building, AlertCircle, Check, Loader2 } from 'lucide-react';
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+function App() {
+  const [medicamento, setMedicamento] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resultados, setResultados] = useState([]);
+  const [totalResultados, setTotalResultados] = useState(0);
+  const [estadosFiltro, setEstadosFiltro] = useState([]);
+  const [tagsFiltro, setTagsFiltro] = useState([]);
+  const [apenasReais, setApenasReais] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [refreshingState, setRefreshingState] = useState(null);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get(`${API}/stats`);
+      setStats(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
+    }
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!medicamento.trim()) return;
+
+    setLoading(true);
+    // Limpar resultados anteriores primeiro para evitar conflito de keys
+    setResultados([]);
+    setTotalResultados(0);
+    
+    try {
+      const response = await axios.post(`${API}/search`, {
+        medicamento: medicamento.trim(),
+        tags: tagsFiltro.length > 0 ? tagsFiltro : null,
+        apenas_reais: apenasReais
+      });
+
+      // Adicionar ID único a cada resultado
+      const resultadosComId = response.data.resultados.map((r, idx) => ({
+        ...r,
+        uniqueId: `${Date.now()}-${r.estado}-${r.numero_processo}-${idx}`
+      }));
+
+      setResultados(resultadosComId);
+      setTotalResultados(response.data.total);
+      fetchStats();
+    } catch (error) {
+      console.error('Erro na busca:', error);
+      alert('Erro ao buscar medicamento. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async (estado) => {
+    if (!medicamento.trim()) {
+      alert('Digite um medicamento antes de atualizar');
+      return;
+    }
+
+    setRefreshingState(estado);
+    try {
+      const response = await axios.post(`${API}/refresh/${estado}?medicamento=${medicamento}`);
+      alert(`Atualizado ${response.data.total} resultados para ${estado}`);
+      // Re-executar busca
+      handleSearch({ preventDefault: () => {} });
+    } catch (error) {
+      console.error('Erro ao atualizar:', error);
+      alert('Erro ao atualizar dados do estado.');
+    } finally {
+      setRefreshingState(null);
+    }
+  };
+
+  const toggleTag = (tag) => {
+    setTagsFiltro(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'Em Licitação': 'bg-blue-100 text-blue-800',
+      'Contratado': 'bg-green-100 text-green-800',
+      'Fornecimento Judicial': 'bg-purple-100 text-purple-800',
+      'Em Análise': 'bg-yellow-100 text-yellow-800',
+      'Suspenso': 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+      {/* Header */}
+      <header className="bg-white shadow-md border-b-4 border-blue-600">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-blue-900" data-testid="app-title">BEM 🏥</h1>
+              <p className="text-sm text-gray-600 mt-1">Buscador Estadual de Medicamentos</p>
+            </div>
+            {stats && (
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Total de Licitações</p>
+                <p className="text-2xl font-bold text-blue-900">{stats.total_licitacoes}</p>
+                <p className="text-xs text-gray-500">
+                  {stats.licitacoes_reais} reais | {stats.licitacoes_mock} mockadas
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Search Section */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8" data-testid="search-section">
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome do Medicamento ou Princípio Ativo
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={medicamento}
+                    onChange={(e) => setMedicamento(e.target.value)}
+                    placeholder="Ex: Adalimumabe, Pembrolizumabe..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    data-testid="search-input"
+                  />
+                  <Search className="absolute right-3 top-3 text-gray-400" size={20} />
+                </div>
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  disabled={loading || !medicamento.trim()}
+                  className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors flex items-center gap-2"
+                  data-testid="search-button"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Buscando...
+                    </>
+                  ) : (
+                    <>
+                      <Search size={20} />
+                      Buscar
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4 items-center pt-4 border-t border-gray-200">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleTag('alto_custo')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    tagsFiltro.includes('alto_custo')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  data-testid="filter-alto-custo"
+                >
+                  💰 Alto Custo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleTag('importado')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    tagsFiltro.includes('importado')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  data-testid="filter-importado"
+                >
+                  🌍 Importado
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleTag('judicial')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    tagsFiltro.includes('judicial')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  data-testid="filter-judicial"
+                >
+                  ⚖️ Judicial
+                </button>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={apenasReais}
+                  onChange={(e) => setApenasReais(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  data-testid="filter-apenas-reais"
+                />
+                <span className="text-sm text-gray-700">Apenas dados reais (CE, ES, SP)</span>
+              </label>
+            </div>
+          </form>
+        </div>
+
+        {/* Results Count */}
+        {totalResultados > 0 && (
+          <div className="mb-6 flex items-center justify-between">
+            <p className="text-lg text-gray-700" data-testid="results-count">
+              <span className="font-bold text-blue-900">{totalResultados}</span> resultados encontrados
+              {medicamento && ` para "${medicamento}"`}
+            </p>
+          </div>
+        )}
+
+        {/* Results Grid */}
+        {resultados.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="results-grid">
+            {resultados.map((resultado, index) => (
+              <div
+                key={resultado.uniqueId || `fallback-${index}`}
+                className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow p-6 border-l-4 ${
+                  resultado.is_mock ? 'border-gray-400' : 'border-green-500'
+                }`}
+                data-testid={`result-card-${index}`}
+              >
+                {/* Header do Card */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg text-gray-900 mb-1" data-testid={`result-medicamento-${index}`}>
+                      {resultado.medicamento}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <MapPin size={16} className="text-blue-600" />
+                      <span className="text-sm font-semibold text-blue-900" data-testid={`result-estado-${index}`}>
+                        {resultado.estado}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {resultado.is_mock ? (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full" data-testid={`result-mock-badge-${index}`}>
+                        📋 Exemplo
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center gap-1" data-testid={`result-real-badge-${index}`}>
+                        <Check size={12} /> Real
+                      </span>
+                    )}
+                    {!resultado.is_mock && ['CE', 'ES', 'SP'].includes(resultado.estado) && (
+                      <button
+                        onClick={() => handleRefresh(resultado.estado)}
+                        disabled={refreshingState === resultado.estado}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
+                        title="Atualizar dados"
+                        data-testid={`refresh-button-${resultado.estado}-${index}`}
+                      >
+                        <RefreshCw size={16} className={refreshingState === resultado.estado ? 'animate-spin' : ''} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className="mb-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(resultado.status)}`} data-testid={`result-status-${index}`}>
+                    {resultado.status}
+                  </span>
+                </div>
+
+                {/* Tags */}
+                {resultado.tags && resultado.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {resultado.tags.map((tag, tagIndex) => (
+                      <span
+                        key={tagIndex}
+                        className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded"
+                        data-testid={`result-tag-${tag}-${index}`}
+                      >
+                        {tag === 'alto_custo' && '💰 Alto Custo'}
+                        {tag === 'importado' && '🌍 Importado'}
+                        {tag === 'judicial' && '⚖️ Judicial'}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Detalhes DESTACADOS */}
+                <div className="space-y-3 text-sm">
+                  {/* LOCAL */}
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <div className="flex items-start gap-2">
+                      <Building size={18} className="mt-0.5 flex-shrink-0 text-blue-600" />
+                      <div>
+                        <p className="text-xs text-blue-600 font-semibold mb-1">LOCAL DA LICITAÇÃO:</p>
+                        <p className="font-bold text-gray-900" data-testid={`result-orgao-${index}`}>{resultado.orgao_licitante}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DATA */}
+                  <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={18} className="flex-shrink-0 text-green-600" />
+                      <div>
+                        <p className="text-xs text-green-600 font-semibold mb-1">DATA DE REFERÊNCIA:</p>
+                        <p className="font-bold text-gray-900 text-base" data-testid={`result-data-${index}`}>{formatDate(resultado.data_referencia)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PROCESSO */}
+                  <div className="flex items-start gap-2 text-gray-600">
+                    <FileText size={16} className="mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-gray-700">{resultado.modalidade}</p>
+                      <p className="text-xs text-gray-500" data-testid={`result-processo-${index}`}>Processo Nº {resultado.numero_processo}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Link do Edital - DESTACADO */}
+                <div className="mt-4 pt-4 border-t-2 border-gray-300">
+                  <a
+                    href={resultado.link_origem}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-center transition-colors"
+                    data-testid={`result-link-${index}`}
+                  >
+                    🔗 ACESSAR EDITAL NO PORTAL OFICIAL
+                  </a>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Clique para ver detalhes completos no site do estado
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !loading && medicamento && (
+          <div className="text-center py-12" data-testid="no-results">
+            <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-600">Nenhum resultado encontrado para "{medicamento}"</p>
+            <p className="text-sm text-gray-500 mt-2">Tente outro medicamento ou ajuste os filtros</p>
+          </div>
+        )}
+
+        {/* Info Footer */}
+        <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="text-blue-600 flex-shrink-0 mt-1" size={24} />
+            <div>
+              <h3 className="font-semibold text-blue-900 mb-2">Sobre os Dados</h3>
+              <p className="text-sm text-gray-700 mb-2">
+                <strong>Estados com scraping real:</strong> Ceará (CE), Espírito Santo (ES) e São Paulo (SP)
+              </p>
+              <p className="text-sm text-gray-600">
+                Os demais estados apresentam dados de exemplo para demonstração da estrutura.
+                Use o filtro "Apenas dados reais" para visualizar apenas informações verificadas.
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default App;

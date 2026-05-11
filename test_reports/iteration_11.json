@@ -1,0 +1,140 @@
+{
+  "summary": "v73.1 CANABIDIOL Radar Bug Fix VERIFIED - All tests passed. CANABIDIOL radar button click returns 28 results (was returning 2-3 before fix), keywords highlighted in yellow, search field populated with radar keywords, download links are <a> tags with target='_blank'.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_11.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "v73.1 BUG FIX VERIFIED: CANABIDIOL radar returns 28 results (was 2-3 before fix)",
+    "Keyword 'canabidiol' highlighted in yellow using <mark class='bg-yellow-300'> tags",
+    "Search field populated with all radar keywords after clicking radar button",
+    "CANABIDIOL button visually highlighted (bg-blue-600, border-blue-500) when selected",
+    "ABERTURA / LIMITE date field shows valid dates (e.g., '10/03/2026, 08:00:00') not '-'",
+    "Manual search for 'canabidiol' also works correctly (27 results)",
+    "Download button is <a> tag with href and target='_blank' - opens portal in new tab",
+    "Other radar buttons (ANA CLAUDA, TESTE API 2, IMPORTADOS) also trigger searches correctly",
+    "No console errors detected during testing"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend-only testing requested)",
+    "frontend": "100%"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "v73.1 CANABIDIOL radar bug fix verified. All radar buttons work correctly. Highlighting uses <mark class='bg-yellow-300'> for yellow background. Download links are properly <a> tags with target='_blank'.",
+  "features_tested": {
+    "P0_CANABIDIOL_RADAR_20_PLUS_RESULTS": {
+      "status": "PASS",
+      "details": "CANABIDIOL radar button click returns 28 results (>= 20 required, was 2-3 before fix)"
+    },
+    "P0_KEYWORD_HIGHLIGHTING_YELLOW": {
+      "status": "PASS",
+      "details": "17 <mark> elements with bg-yellow-300 class found highlighting 'CANABIDIOL' in object text and item descriptions"
+    },
+    "P0_SEARCH_FIELD_POPULATED": {
+      "status": "PASS",
+      "details": "Search field shows 'Canabidiol, Mevatyl, CBD, THC, NANO, BIOLOGICS...' after clicking radar"
+    },
+    "P0_RADAR_BUTTON_HIGHLIGHTED": {
+      "status": "PASS",
+      "details": "CANABIDIOL button changes to bg-blue-600 text-white border-blue-500 when selected"
+    },
+    "P0_DATE_FIELD_VALID": {
+      "status": "PASS",
+      "details": "ABERTURA / LIMITE shows valid dates like '10/03/2026, 08:00:00' not '-'"
+    },
+    "P0_MANUAL_SEARCH_WORKS": {
+      "status": "PASS",
+      "details": "Manual search for 'canabidiol' in search box returns 27 results with highlighting"
+    },
+    "P0_DOWNLOAD_BUTTON_A_TAG": {
+      "status": "PASS",
+      "details": "Download button is <a> tag (not <button>) with href attribute"
+    },
+    "P0_DOWNLOAD_TARGET_BLANK": {
+      "status": "PASS",
+      "details": "Download link has target='_blank' - opens portal page in new tab"
+    },
+    "P1_OTHER_RADARS_WORK": {
+      "status": "PASS",
+      "details": "ANA CLAUDA (11 results), TESTE API 2 (10 results), IMPORTADOS (11 results) all work"
+    },
+    "P1_NO_CONSOLE_ERRORS": {
+      "status": "PASS",
+      "details": "No console errors detected during all tests"
+    }
+  },
+  "test_runs": [
+    {
+      "test": "CANABIDIOL radar click - 20+ results",
+      "result": "PASS",
+      "actual_results": 28,
+      "expected": ">= 20"
+    },
+    {
+      "test": "Keyword highlighting in yellow",
+      "result": "PASS",
+      "mark_elements_found": 17,
+      "highlighted_in_items": 8
+    },
+    {
+      "test": "Search field populated with keywords",
+      "result": "PASS",
+      "value": "Canabidiol, Mevatyl, CBD, THC, NANO, BIOLOGICS, USAHEMP, VERDEMED, ZION, TEGRAPHARMA, USALINE, LATANLINE, PROLINE"
+    },
+    {
+      "test": "Radar button visually highlighted",
+      "result": "PASS",
+      "classes_after_click": "bg-blue-600 text-white border-blue-500"
+    },
+    {
+      "test": "Date field shows valid date",
+      "result": "PASS",
+      "example_date": "10/03/2026, 08:00:00"
+    },
+    {
+      "test": "Manual search for canabidiol",
+      "result": "PASS",
+      "results": 27
+    },
+    {
+      "test": "Download button is <a> with target='_blank'",
+      "result": "PASS"
+    },
+    {
+      "test": "ANA CLAUDA radar",
+      "result": "PASS",
+      "results": 11
+    },
+    {
+      "test": "TESTE API 2 radar",
+      "result": "PASS",
+      "results": 10
+    },
+    {
+      "test": "IMPORTADOS radar",
+      "result": "PASS",
+      "results": 11
+    }
+  ],
+  "console_errors_detected": 0,
+  "screenshots": [
+    ".screenshots/canabidiol_test_initial.png",
+    ".screenshots/canabidiol_test_results.png",
+    ".screenshots/manual_search_canabidiol.png",
+    ".screenshots/other_radars_test.png",
+    ".screenshots/canabidiol_scrolled.png"
+  ]
+}

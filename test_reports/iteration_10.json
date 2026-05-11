@@ -1,0 +1,142 @@
+{
+  "summary": "v74.0 UNIFIED SEARCH VERIFIED - All tests passed. /api/search/unified endpoint returns 11000+ results for 'insulina' with PNCP real-time data. Download button is <a> tag with href containing pncp.gov.br and target='_blank'. No 'Effecti' references found anywhere in UI.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_unified_search.py",
+    "/app/test_reports/pytest/pytest_results_v74.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "v74.0 SUCCESS: /api/search/unified returns 11658 results for 'insulina' (>11000 required)",
+    "PNCP real-time search working: fontes.pncp_tempo_real = 11658",
+    "Download button is <a> tag (not <button>) with href containing pncp.gov.br",
+    "Download button has target='_blank' for opening in new tab",
+    "No console errors (especially insertBefore)",
+    "No 'Effecti' or 'EFFECTI' references in any tab",
+    "Multi-source working: canabidiol returns pncp_tempo_real=2758 + cache_local=1842"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_unified_search.py"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "v74.0 unified search fully verified. PNCP API public at pncp.gov.br/api/search/ works without authentication. MotorBuscaUnificado combines PNCP real-time + local cache (editais_gsm collection) for multi-source results.",
+  "features_tested": {
+    "P0_UNIFIED_SEARCH_ENDPOINT": {
+      "status": "PASS",
+      "details": "/api/search/unified?q=insulina returns total=11658, resultados not empty, fontes.pncp_tempo_real > 0"
+    },
+    "P0_INSULINA_11000_PLUS": {
+      "status": "PASS",
+      "details": "UI shows '11658 editais encontrados' for insulina search"
+    },
+    "P0_REQUIRED_FIELDS": {
+      "status": "PASS",
+      "details": "Results contain: portal_captura, orgao, objeto, link_documento, uf, modalidade"
+    },
+    "P0_FONTES_PNCP_TEMPO_REAL": {
+      "status": "PASS",
+      "details": "fontes.pncp_tempo_real = 11658 (> 0 as required)"
+    },
+    "P0_DOWNLOAD_BUTTON_A_TAG": {
+      "status": "PASS",
+      "details": "Download button is <a> tag (not <button>)"
+    },
+    "P0_DOWNLOAD_HREF_PNCP": {
+      "status": "PASS",
+      "details": "Download href contains 'pncp.gov.br'"
+    },
+    "P0_DOWNLOAD_TARGET_BLANK": {
+      "status": "PASS",
+      "details": "Download button has target='_blank'"
+    },
+    "P0_NO_EFFECTI_REFERENCES": {
+      "status": "PASS",
+      "details": "Checked all tabs (PESQUISA, MINHAS LISTAS, RADARES, PREÇOS, DAMA IA) - no Effecti/EFFECTI found"
+    },
+    "P0_PNCP_IN_CARDS": {
+      "status": "PASS",
+      "details": "Results show 'Portal: PNCP' in card headers for PNCP results"
+    },
+    "P0_CANABIDIOL_MULTI_SOURCE": {
+      "status": "PASS",
+      "details": "canabidiol search returns pncp_tempo_real=2758 + cache_local=1842 (multi-source)"
+    },
+    "P0_NO_CONSOLE_ERRORS": {
+      "status": "PASS",
+      "details": "No console errors detected, especially no 'insertBefore' errors"
+    }
+  },
+  "test_runs": [
+    {
+      "test": "Backend API Tests (pytest)",
+      "result": "PASS",
+      "total_tests": 11,
+      "passed": 11,
+      "failed": 0
+    },
+    {
+      "test": "Search insulina - total > 11000",
+      "result": "PASS",
+      "total_returned": 11658
+    },
+    {
+      "test": "Response has required fields",
+      "result": "PASS",
+      "fields_verified": ["portal_captura", "orgao", "objeto", "link_documento", "uf", "modalidade"]
+    },
+    {
+      "test": "fontes.pncp_tempo_real > 0",
+      "result": "PASS",
+      "value": 11658
+    },
+    {
+      "test": "Download button is <a> tag",
+      "result": "PASS"
+    },
+    {
+      "test": "Download href contains pncp.gov.br",
+      "result": "PASS"
+    },
+    {
+      "test": "Download target='_blank'",
+      "result": "PASS"
+    },
+    {
+      "test": "No Effecti references in UI",
+      "result": "PASS",
+      "tabs_checked": ["PESQUISA", "MINHAS LISTAS", "RADARES", "PREÇOS", "DAMA IA"]
+    },
+    {
+      "test": "canabidiol multi-source",
+      "result": "PASS",
+      "pncp_tempo_real": 2758,
+      "cache_local": 1842
+    },
+    {
+      "test": "No insertBefore errors",
+      "result": "PASS"
+    }
+  ],
+  "console_errors_detected": 0,
+  "screenshots": [
+    ".screenshots/frontend_initial.png",
+    ".screenshots/search_results.png",
+    ".screenshots/canabidiol_results.png",
+    ".screenshots/tabs_verified.png"
+  ]
+}

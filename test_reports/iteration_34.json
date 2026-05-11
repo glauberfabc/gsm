@@ -1,0 +1,166 @@
+{
+  "summary": "Buscar Medicamento V2 DAMA Intelligence upgrade tested successfully. Backend: 12/12 pytest tests passed. Frontend: All UI elements verified via Playwright. Key features working: temporal filter (>=2025), RECENTE tags (2026), JANELA ABERTA detection via PNCP contratação direta/dispensa, dynamic priority sorting, 6 sources consulted. Somatropina: 38 results with janela_aberta=true. Ustequinumabe: 22 results with DISPENSA EMERGENCIAL detected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_buscar_medicamento_v2_dama.py",
+    "/app/test_reports/pytest/pytest_results_buscar_medicamento_v2.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VERIFIED: GET /api/anvisa/buscar-medicamento?q=Somatropina returns 15+ results, janela_aberta=true",
+    "VERIFIED: GET /api/anvisa/buscar-medicamento?q=Ustequinumabe returns 22 results, janela_aberta=true, DISPENSA EMERGENCIAL from 2026-02-25",
+    "VERIFIED: Temporal filter working - no results with dates before 2025",
+    "VERIFIED: RECENTE tag applied to 2026 results (tag_recente=true)",
+    "VERIFIED: Dynamic priority - JANELA_ABERTA results first, then RECENTE+keyword, then others",
+    "VERIFIED: 6 sources consulted: DOU, Base de Alertas GSM, CMED, Notícias ANVISA, PNCP Licitações Desertas/Fracassadas, ANVISA Descontinuação",
+    "VERIFIED: Response includes fontes_consultadas with name, total, status per source",
+    "VERIFIED: Response includes janela_aberta boolean flag",
+    "VERIFIED: Response includes filtro_temporal='>=2025'",
+    "VERIFIED: PNCP contratação direta detection sets janela_aberta_detectada=true on results",
+    "VERIFIED: Frontend JANELA ABERTA banner (red pulsing) appears when janela_aberta=true",
+    "VERIFIED: Frontend RECENTE badge (green) appears on 2026 results",
+    "VERIFIED: Frontend JANELA ABERTA badge (red pulsing) appears on PNCP contratação direta results",
+    "VERIFIED: Frontend fontes bar shows count per source with green/grey badges",
+    "VERIFIED: Frontend Ver Documento and Esclarecimento buttons on each result",
+    "VERIFIED: Frontend temporal filter label shows 'filtro: >=2025'"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_buscar_medicamento_v2_dama.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 pytest tests passed)",
+    "frontend": "100% - All DAMA V2 UI components working correctly"
+  },
+  "test_credentials": "None required",
+  "seed_data_creation": "None - uses live DOU/PNCP/ANVISA government portal data via scraping",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Buscar Medicamento V2 DAMA Intelligence fully working. Search takes 15-25s due to live scraping of 6 sources. Key test: Go to Janela ANVISA tab, search for 'Somatropina' or 'Ustequinumabe'. Verify: (1) JANELA ABERTA alert banner appears, (2) 6 fonte badges in header, (3) JANELA ABERTA red badges on PNCP results, (4) RECENTE green badges on 2026 results, (5) Results sorted by priority, (6) Ver Documento and Esclarecimento buttons.",
+  "features_tested": {
+    "backend_somatropina_search": {
+      "status": "PASS",
+      "endpoint": "GET /api/anvisa/buscar-medicamento?q=Somatropina",
+      "results": "15+",
+      "janela_aberta": true,
+      "filtro_temporal": ">=2025"
+    },
+    "backend_ustequinumabe_search": {
+      "status": "PASS",
+      "endpoint": "GET /api/anvisa/buscar-medicamento?q=Ustequinumabe",
+      "results": 22,
+      "janela_aberta": true,
+      "dispensa_emergencial_found": true,
+      "dispensa_date": "2026-02-25"
+    },
+    "temporal_filter": {
+      "status": "PASS",
+      "description": "No results with data_publicacao before 2025",
+      "pre_2025_count": 0
+    },
+    "recente_tag": {
+      "status": "PASS",
+      "description": "Results from 2026 have tag_recente=true",
+      "2026_results_with_tag": "verified"
+    },
+    "dynamic_priority": {
+      "status": "PASS",
+      "description": "JANELA ABERTA results first, then RECENTE+keyword",
+      "order": ["janela_aberta_detectada", "keyword+recente", "recente", "others", "obsolete"]
+    },
+    "six_sources_consulted": {
+      "status": "PASS",
+      "sources": [
+        {"name": "DOU - Diário Oficial da União", "status": "ok"},
+        {"name": "Base de Alertas GSM", "status": "ok"},
+        {"name": "CMED - Risco de Desabastecimento", "status": "ok"},
+        {"name": "Notícias ANVISA", "status": "ok"},
+        {"name": "PNCP - Licitações Desertas/Fracassadas", "status": "ok"},
+        {"name": "ANVISA - Descontinuação", "status": "ok"}
+      ]
+    },
+    "frontend_janela_aberta_banner": {
+      "status": "PASS",
+      "selector": "[data-testid='janela-aberta-alert']",
+      "style": "red pulsing (animate-pulse)"
+    },
+    "frontend_recente_badge": {
+      "status": "PASS",
+      "style": "green (bg-emerald-600)",
+      "text": "RECENTE"
+    },
+    "frontend_janela_aberta_badge": {
+      "status": "PASS",
+      "selector": "[data-testid^='janela-aberta-badge']",
+      "style": "red pulsing (bg-red-700 animate-pulse)",
+      "text": "JANELA ABERTA"
+    },
+    "frontend_fontes_bar": {
+      "status": "PASS",
+      "description": "Shows count per source with green/grey badges",
+      "badge_count": 6
+    },
+    "frontend_buttons": {
+      "status": "PASS",
+      "ver_documento": "present",
+      "esclarecimento": "present"
+    }
+  },
+  "pytest_results_summary": {
+    "file": "/app/backend/tests/test_buscar_medicamento_v2_dama.py",
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "duration": "68.06s",
+    "test_classes": [
+      {
+        "class": "TestBuscarMedicamentoDamaFeatures",
+        "tests": 3,
+        "description": "Somatropina search, janela_aberta flag, PNCP contratação direta"
+      },
+      {
+        "class": "TestUstequinumabeDisensaEmergencial",
+        "tests": 3,
+        "description": "Ustequinumabe search, DISPENSA EMERGENCIAL, janela_aberta"
+      },
+      {
+        "class": "TestTemporalFilter",
+        "tests": 1,
+        "description": "No pre-2025 results verification"
+      },
+      {
+        "class": "TestRecenteTag",
+        "tests": 1,
+        "description": "tag_recente=true for 2026 results"
+      },
+      {
+        "class": "TestDynamicPriority",
+        "tests": 1,
+        "description": "Priority ordering verification"
+      },
+      {
+        "class": "TestFontesConsultadas",
+        "tests": 1,
+        "description": "6 sources with count and status"
+      },
+      {
+        "class": "TestResponseStructure",
+        "tests": 2,
+        "description": "Response fields and risco values"
+      }
+    ]
+  },
+  "screenshots": [
+    ".screenshots/anvisa_busca_v2_initial.png - Initial Janela ANVISA tab",
+    ".screenshots/anvisa_busca_v2_somatropina.png - Somatropina results (38 results, JANELA ABERTA banner)",
+    ".screenshots/anvisa_busca_v2_ustequinumabe.png - Ustequinumabe results (22 results, DISPENSA EMERGENCIAL)",
+    ".screenshots/anvisa_busca_v2_final.png - Final state"
+  ]
+}
