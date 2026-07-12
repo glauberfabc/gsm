@@ -81,6 +81,9 @@ class PNCPSearchClient:
                             resultado = self._mapear_resultado(item, termo)
                             if resultado:
                                 resultados.append(resultado)
+                    else:
+                        body_err = await resp.text()
+                        logger.error(f"  ❌ Erro HTTP PNCP Search: {resp.status} | URL: {resp.url} | Params: {params} | Resposta: {body_err[:300]}")
                         
                         # Paginar para buscar mais resultados
                         total_paginas = min(max_paginas, (total // 10) + 1)

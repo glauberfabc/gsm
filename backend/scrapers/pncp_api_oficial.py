@@ -95,7 +95,8 @@ class PNCPApiOficial:
                     
                     async with session.get(url, params=params) as response:
                         if response.status != 200:
-                            logger.error(f"  ❌ Erro HTTP: {response.status}")
+                            body_err = await response.text()
+                            logger.error(f"  ❌ Erro HTTP: {response.status} | URL: {response.url} | Params: {params} | Resposta: {body_err[:300]}")
                             break
                         
                         data = await response.json()
@@ -174,7 +175,8 @@ class PNCPApiOficial:
                 
                 async with session.get(self.SEARCH_URL, params=params) as response:
                     if response.status != 200:
-                        logger.error(f"  ❌ Erro HTTP no Portal Search: {response.status}")
+                        body_err = await response.text()
+                        logger.error(f"  ❌ Erro HTTP no Portal Search: {response.status} | URL: {response.url} | Params: {params} | Resposta: {body_err[:300]}")
                         return []
                     
                     data = await response.json()

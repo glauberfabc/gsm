@@ -38,7 +38,7 @@ class AgregadorClient:
     Permite acesso a múltiplos portais de licitação via uma única interface.
     """
     
-    BASE_URL = "https://mdw.minha.agregador.com.br"
+    BASE_URL = "https://gsm.gruposmartmedical.com.br"
     
     # IDs dos portais conhecidos no Agregador
     PORTAL_IDS = {

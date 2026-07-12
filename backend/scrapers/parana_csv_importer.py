@@ -117,7 +117,14 @@ class ParanaCsvImporter:
             async with async_playwright() as p:
                 browser = await p.chromium.launch(
                     headless=True,
-                    args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                    args=[
+                        '--no-sandbox', 
+                        '--disable-setuid-sandbox', 
+                        '--disable-dev-shm-usage',
+                        '--disable-gpu',
+                        '--no-zygote',
+                        '--disable-extensions'
+                    ]
                 )
                 
                 # Configurar contexto com diretório de download
@@ -126,6 +133,10 @@ class ParanaCsvImporter:
                     viewport={'width': 1920, 'height': 1080},
                     accept_downloads=True
                 )
+                
+                # Bloquear carregamento de imagens, fontes e CSS para economizar RAM
+                await context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "stylesheet"] else route.continue_())
+                
                 page = await context.new_page()
                 
                 try:

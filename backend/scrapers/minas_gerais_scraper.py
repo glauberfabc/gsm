@@ -74,12 +74,23 @@ class MinasGeraisScraper:
                 # Iniciar browser com configurações robustas (igual BEC/SP)
                 browser = await p.chromium.launch(
                     headless=True,
-                    args=['--no-sandbox', '--disable-setuid-sandbox']
+                    args=[
+                        '--no-sandbox', 
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-gpu',
+                        '--no-zygote',
+                        '--disable-extensions'
+                    ]
                 )
                 context = await browser.new_context(
                     user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     viewport={'width': 1920, 'height': 1080}
                 )
+                
+                # Bloquear carregamento de imagens, fontes e CSS para economizar RAM
+                await context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font", "stylesheet"] else route.continue_())
+                
                 page = await context.new_page()
                 
                 try:
