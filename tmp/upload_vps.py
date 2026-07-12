@@ -8,9 +8,16 @@ def upload_zip():
     username = 'root'
     password = 'Glauber2010*'
 
-    transport = paramiko.Transport((host, port))
-    transport.connect(username=username, password=password)
-    sftp = paramiko.SFTPClient.from_transport(transport)
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    import os
+    key_path = os.path.expanduser('~/.ssh/vps_gsmatual')
+    if os.path.exists(key_path):
+        client.connect(host, port=port, username=username, key_filename=key_path, timeout=10)
+    else:
+        client.connect(host, port=port, username=username, password=password, timeout=10)
+    
+    sftp = client.open_sftp()
     
     local_path = 'frontend_build.zip'
     remote_path = '/root/frontend_build.zip'
@@ -18,7 +25,7 @@ def upload_zip():
     print(f"Uploading {local_path} to {remote_path}...")
     sftp.put(local_path, remote_path)
     sftp.close()
-    transport.close()
+    client.close()
     print("Upload complete.")
 
 if __name__ == '__main__':

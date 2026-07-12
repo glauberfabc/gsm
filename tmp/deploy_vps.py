@@ -31,9 +31,15 @@ def ssh_cmd(client, cmd):
     out = stdout.read().decode('utf-8', errors='replace').strip()
     err = stderr.read().decode('utf-8', errors='replace').strip()
     if out:
-        print(f'    {out}')
+        try:
+            print(f'    {out}')
+        except UnicodeEncodeError:
+            print(f'    {out.encode("ascii", errors="replace").decode("ascii")}')
     if err:
-        print(f'    ERR: {err}')
+        try:
+            print(f'    ERR: {err}')
+        except UnicodeEncodeError:
+            print(f'    ERR: {err.encode("ascii", errors="replace").decode("ascii")}')
     return out
 
 
@@ -60,7 +66,12 @@ def main():
     print('=== CONECTANDO NA VPS ===')
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(HOST, port=PORT, username=USER, password=PASS)
+    import os
+    key_path = os.path.expanduser('~/.ssh/vps_gsmatual')
+    if os.path.exists(key_path):
+        client.connect(HOST, port=PORT, username=USER, key_filename=key_path, timeout=10)
+    else:
+        client.connect(HOST, port=PORT, username=USER, password=PASS, timeout=10)
     print('Conectado.')
 
     print('\n=== UPLOAD DE ARQUIVOS BACKEND ===')
