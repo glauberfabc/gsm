@@ -160,11 +160,10 @@ class PNCPSyncService:
                     
                     logger.info(f"🌐 [PNCP-API] Buscando página {pagina} para '{termo}'")
                     
-                    # Tentar diferentes endpoints
+                    # Tentar diferentes endpoints (com tratamento do erro 400 por parâmetros inválidos)
                     endpoints = [
-                        f"https://pncp.gov.br/api/search?q={termo}&page={pagina}&size={min(50, limite)}",
-                        f"https://pncp.gov.br/api/consulta/v1/contratacoes?palavraChave={termo}&pagina={pagina}",
-                        f"https://pncp.gov.br/api/pncp/v1/orgaos?q={termo}"
+                        f"https://pncp.gov.br/api/search/?q={termo}&pagina={pagina}&tam_pagina={min(50, limite)}&status=recebendo_proposta",
+                        f"https://pncp.gov.br/api/consulta/v1/contratacoes?palavraChave={termo}&pagina={pagina}"
                     ]
                     
                     resultados = []

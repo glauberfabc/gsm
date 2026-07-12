@@ -34,7 +34,7 @@ class CloneAgregadorService:
     Serviço de clonagem da API Agregador para o MongoDB local.
     """
     
-    BASE_URL = "https://mdw.minha.agregador.com.br"
+    BASE_URL = "https://gsm.gruposmartmedical.com.br"
     
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db

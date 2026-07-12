@@ -285,6 +285,13 @@ class MedicamentoSearchService:
             f'{termo} dispensa de licitação',
         ]
 
+        # Termos significativos (>3 chars) extraídos do nome para filtro de relevância.
+        # Evita aceitar resultados do DOU que batem apenas em tokens genéricos como "20" ou "G-F".
+        termos_sig = [
+            t.lower() for t in re.split(r'[\s/\-,;]+', termo)
+            if len(t) > 3
+        ]
+
         for query in queries:
             try:
                 encoded = urllib.parse.quote(query)
@@ -300,13 +307,21 @@ class MedicamentoSearchService:
                     if not titulo or len(titulo) < 10:
                         continue
 
+                    abstract = item.get('abstract', '') or ''
+
+                    # Filtro de relevância: o título ou abstract deve conter ao menos
+                    # um termo significativo do medicamento buscado.
+                    if termos_sig:
+                        texto_item = (titulo + ' ' + abstract).lower()
+                        if not any(t in texto_item for t in termos_sig):
+                            continue
+
                     href = item.get('urlTitle', '')
                     link = f"https://www.in.gov.br/web/dou/-/{href}" if href else ''
-                    abstract = item.get('abstract', '') or ''
 
                     resultados.append({
                         'titulo': titulo,
-                        'descricao': abstract if abstract else f'Publicação DOU sobre {termo}',
+                        'descricao': abstract or '',
                         'link': link,
                         'data_publicacao': item.get('pubDate', ''),
                         'fonte': 'DOU',
@@ -343,14 +358,24 @@ class MedicamentoSearchService:
 
     # ===================== FONTE 2: DB ALERTAS =====================
     async def _buscar_alertas_db(self, termo: str) -> List[Dict]:
-        regex = re.compile(re.escape(termo), re.IGNORECASE)
+        # Para nomes compostos com "/" (ex: "Synvisc Classic 2ml / Hilano G-F 20"),
+        # busca cada parte individualmente além do nome completo, pois o banco pode
+        # ter armazenado apenas uma das formas do nome.
+        partes = [p.strip() for p in termo.split('/') if p.strip()] if '/' in termo else []
+        termos_busca = [termo] + partes
+
+        or_conditions = []
+        for t in termos_busca:
+            r = re.compile(re.escape(t), re.IGNORECASE)
+            or_conditions.extend([
+                {"medicamento_detectado": r},
+                {"principio_ativo": r},
+                {"titulo": r},
+                {"medicamento": r},
+            ])
+
         cursor = self.db.anvisa_alerts.find(
-            {"$or": [
-                {"medicamento_detectado": regex},
-                {"principio_ativo": regex},
-                {"titulo": regex},
-                {"medicamento": regex},
-            ]},
+            {"$or": or_conditions},
             {"_id": 0}
         ).sort("coletado_em", -1).limit(20)
         results = await cursor.to_list(length=20)
@@ -360,15 +385,20 @@ class MedicamentoSearchService:
 
     # ===================== FONTE 3: CMED DB =====================
     async def _buscar_cmed_db(self, termo: str) -> List[Dict]:
-        regex = re.compile(re.escape(termo), re.IGNORECASE)
+        partes = [p.strip() for p in termo.split('/') if p.strip()] if '/' in termo else []
+        termos_busca = [termo] + partes
+        or_conditions = []
+        for t in termos_busca:
+            r = re.compile(re.escape(t), re.IGNORECASE)
+            or_conditions.extend([
+                {"medicamento_detectado": r},
+                {"principio_ativo": r},
+                {"titulo": r},
+            ])
         cursor = self.db.anvisa_alerts.find(
             {"$and": [
                 {"is_cmed": True},
-                {"$or": [
-                    {"medicamento_detectado": regex},
-                    {"principio_ativo": regex},
-                    {"titulo": regex},
-                ]}
+                {"$or": or_conditions},
             ]},
             {"_id": 0}
         ).limit(10)

@@ -10,9 +10,10 @@ export function RadaresTab({ meusRadares, setMeusRadares, onSearch }) {
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Gestao de Radares (E-mail)</h2>
         <button className="bg-emerald-600 text-white px-8 py-4 rounded-xl font-black text-sm uppercase flex items-center gap-2 shadow-lg hover:bg-emerald-700" onClick={() => {
-          const novoRadar = { id: `r${Date.now()}`, nome: 'Novo Radar', termos: '', email: '', frequencia: '24h' };
-          axios.post(`${API}/radares`, novoRadar).then(() => {
-            setMeusRadares(prev => [...prev, { id: novoRadar.id, name: novoRadar.nome, terms: novoRadar.termos, email: novoRadar.email, freq: novoRadar.frequencia }]);
+          const novoRadar = { nome: 'Novo Radar', termos: '', email: '', frequencia: '24h' };
+          axios.post(`${API}/radares`, novoRadar).then((res) => {
+            const radarCriado = res.data.radar;
+            setMeusRadares(prev => [...prev, { id: radarCriado.id, name: radarCriado.nome, terms: radarCriado.termos, email: radarCriado.email, freq: radarCriado.frequencia }]);
           }).catch(() => alert('Erro ao criar radar'));
         }}>
           <Plus size={20}/> Novo Radar

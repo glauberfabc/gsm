@@ -11,9 +11,10 @@ export function ListasTab({ minhasListas, setMinhasListas, onSearch }) {
         <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Minhas Listas / Atalhos</h2>
         <button
           onClick={() => {
-            const novaLista = { id: `l${Date.now()}`, nome: 'Nova Lista', medicamentos: [] };
-            axios.post(`${API}/listas`, novaLista).then(() => {
-              setMinhasListas(prev => [...prev, { id: novaLista.id, name: novaLista.nome, keywords: '' }]);
+            const novaLista = { nome: 'Nova Lista', medicamentos: [] };
+            axios.post(`${API}/listas`, novaLista).then((res) => {
+              const listaCriada = res.data.lista;
+              setMinhasListas(prev => [...prev, { id: listaCriada.id, name: listaCriada.nome, keywords: '' }]);
             }).catch(() => alert('Erro ao criar lista'));
           }}
           className="bg-indigo-600 text-white px-8 py-4 rounded-xl font-black text-sm uppercase flex items-center gap-2 shadow-lg hover:bg-indigo-700"

@@ -40,7 +40,7 @@ class MotorSincronizacaoGSM:
     Roda automaticamente a cada 15 minutos via APScheduler.
     """
     
-    BASE_URL = "https://mdw.minha.agregador.com.br"
+    BASE_URL = "https://gsm.gruposmartmedical.com.br"
     
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db

@@ -323,7 +323,7 @@ class NormalizadorGenerico:
                 # 🔗 Link resolvido pelo LinkResolverService (Prioridade: PNCP > Portal > PDF > Fallback)
                 link_edital=links_resolvidos['link_principal'],
                 link_anexos=[],
-                tags=tags if tags else None,
+                tags=tags if isinstance(tags, list) else [],
                 is_saude=is_saude,
                 origem_dados=origem,
                 created_at=self._parse_datetime(raw_doc.get('criado_em')) or datetime.utcnow(),
@@ -475,9 +475,11 @@ class NormalizadorGenerico:
             # Converter para dict
             edital_dict = edital.model_dump(exclude_none=True)
             
-            # Upsert usando hash_dedup como chave
+            # Upsert usando id_externo como chave primária (fallback para hash_dedup se não houver id_externo)
+            query_match = {"id_externo": edital.id_externo} if edital.id_externo else {"hash_dedup": edital.hash_dedup}
+            
             result = await self.normalized_collection.update_one(
-                {"hash_dedup": edital.hash_dedup},
+                query_match,
                 {"$set": edital_dict},
                 upsert=True
             )

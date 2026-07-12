@@ -163,7 +163,7 @@ export default function ListasManager({ onClose, onListaSelected }) {
           <div>
             <h2 className="text-2xl font-bold">Minhas Listas de Medicamentos</h2>
             <p className="text-blue-100 text-sm mt-1">
-              Gerencie até 5 listas customizadas • {listas.length}/5 criadas
+              Gerencie até 5 listas customizadas • <span>{listas.length}</span>/5 criadas
             </p>
           </div>
           <button
@@ -250,7 +250,7 @@ export default function ListasManager({ onClose, onListaSelected }) {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        {formMedicamentos.split('\n').filter(m => m.trim()).length} medicamentos
+                        <span>{formMedicamentos.split('\n').filter(m => m.trim()).length}</span> medicamentos
                       </p>
                     </div>
 
@@ -293,7 +293,7 @@ export default function ListasManager({ onClose, onListaSelected }) {
                             <p className="text-sm text-gray-600 mt-1">{lista.descricao}</p>
                           )}
                           <p className="text-xs text-gray-500 mt-2">
-                            {lista.medicamentos.length} medicamento(s)
+                            <span>{lista.medicamentos.length}</span> medicamento(s)
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -334,7 +334,7 @@ export default function ListasManager({ onClose, onListaSelected }) {
                             ))}
                             {lista.medicamentos.length > 10 && (
                               <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">
-                                +{lista.medicamentos.length - 10} mais
+                                +<span>{lista.medicamentos.length - 10}</span> mais
                               </span>
                             )}
                           </div>

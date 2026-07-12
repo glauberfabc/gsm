@@ -45,7 +45,13 @@ class MotorBuscaIndependente:
         limit: int = 50,
         **kwargs
     ) -> Dict:
-        termos = [t.strip() for t in termo.split(',') if t.strip()][:3]
+        # Remove duplicados preservando a ordem e define limite de até 20 termos
+        termos_unicos = []
+        for t in termo.split(','):
+            t_clean = t.strip()
+            if t_clean and t_clean not in termos_unicos:
+                termos_unicos.append(t_clean)
+        termos = termos_unicos[:20]
 
         tasks = {}
         for i, t in enumerate(termos):

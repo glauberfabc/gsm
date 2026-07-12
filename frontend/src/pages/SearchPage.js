@@ -543,8 +543,8 @@ const SearchPage = React.forwardRef((props, ref) => {
               <p className="text-sm text-green-700 font-medium">📋 Lista selecionada:</p>
               <p className="text-lg font-bold text-green-900">{listaSelecionada.nome}</p>
               <p className="text-sm text-green-600 mt-1">
-                {listaSelecionada.medicamentos.length} palavra(s): {listaSelecionada.medicamentos.slice(0, 3).join(', ')}
-                {listaSelecionada.medicamentos.length > 3 && '...'}
+                <span>{listaSelecionada.medicamentos.length}</span> palavra(s): <span>{listaSelecionada.medicamentos.slice(0, 3).join(', ')}</span>
+                {listaSelecionada.medicamentos.length > 3 && <span>...</span>}
               </p>
             </div>
             <button
