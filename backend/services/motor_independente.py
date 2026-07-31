@@ -144,7 +144,9 @@ class MotorBuscaIndependente:
                     uf = info['uf']
             else:
                 logger.warning(f"⚠️ [LOCALIZACAO] Município '{municipio}' não encontrado na base do IBGE")
-                return {'resultados': [], 'total': 0, 'pagina': pagina, 'fontes': {'pncp_gov_br': 0, 'compras_gov_br': 0}}
+                return {'resultados': [], 'total': 0, 'pagina': pagina, 'fontes': {'pncp_gov_br': 0, 'compras_gov_br': 0}, 'fonte_disponivel': True}
+
+        cache_key = f"{(uf or '').upper()}|{codigo_ibge or (municipio or '').strip().lower()}|{pagina}|{limit}|{modalidade or ''}"
 
         PNCP_PAGE_SIZE = 50
         idx_inicio = (pagina - 1) * limit
@@ -165,6 +167,7 @@ class MotorBuscaIndependente:
 
         brutos = []
         total = 0
+        pncp_respondeu = False
         try:
             async with aiohttp.ClientSession(timeout=self.timeout) as s:
                 for pg in range(pg_inicio, pg_fim + 1):
@@ -172,6 +175,7 @@ class MotorBuscaIndependente:
                     async with s.get(f"{PNCP_CONSULTA}/contratacoes/proposta", params=params) as r:
                         if r.status != 200:
                             break
+                        pncp_respondeu = True
                         data = await r.json()
                         total = data.get('totalRegistros', 0)
                         itens = data.get('data', [])
@@ -180,6 +184,28 @@ class MotorBuscaIndependente:
                         brutos.extend(itens)
         except Exception as e:
             logger.error(f"Erro busca por localização (uf={uf}, municipio={municipio}): {e}")
+
+        # v80.1: PNCP Consulta API é conhecida por instabilidade (pool de conexão
+        # do lado deles, timeouts completos em horário de pico). Quando ele não
+        # responde, servimos a última busca com sucesso em cache (se houver) em
+        # vez de mostrar "0 resultados", que é enganoso.
+        if not pncp_respondeu:
+            cache_resultado = await self._buscar_cache_localizacao(cache_key)
+            if cache_resultado:
+                logger.warning(f"⚠️ [PNCP-INSTAVEL] uf={uf} municipio={municipio}: servindo resultado em cache")
+                cache_resultado['fonte_disponivel'] = False
+                cache_resultado['aviso'] = 'O PNCP está instável no momento. Exibindo a última busca disponível em cache.'
+                return cache_resultado
+
+            logger.error(f"❌ [PNCP-INSTAVEL] uf={uf} municipio={municipio}: sem cache disponível")
+            return {
+                'resultados': [],
+                'total': 0,
+                'pagina': pagina,
+                'fontes': {'pncp_gov_br': 0, 'compras_gov_br': 0},
+                'fonte_disponivel': False,
+                'aviso': 'O PNCP está instável/indisponível no momento para busca por localização. Tente novamente em alguns minutos.'
+            }
 
         mapeados = [m for it in brutos if (m := self._map_consulta_proposta(it))]
 
@@ -194,12 +220,53 @@ class MotorBuscaIndependente:
 
         logger.info(f"🌍 [PNCP-LOCALIZACAO] uf={uf} municipio={municipio}: {len(pagina_resultados)} de {total} totais")
 
-        return {
+        resultado_final = {
             'resultados': pagina_resultados,
             'total': total,
             'pagina': pagina,
-            'fontes': {'pncp_gov_br': total, 'compras_gov_br': 0}
+            'fontes': {'pncp_gov_br': total, 'compras_gov_br': 0},
+            'fonte_disponivel': True
         }
+        await self._salvar_cache_localizacao(cache_key, resultado_final)
+        return resultado_final
+
+    # ─── Cache de resiliência (PNCP Consulta API é instável) ──
+    CACHE_COLLECTION = 'cache_busca_localizacao'
+    CACHE_TTL_SEGUNDOS = 6 * 3600  # 6 horas
+
+    async def _garantir_indice_cache(self):
+        if self.db is None:
+            return
+        try:
+            await self.db[self.CACHE_COLLECTION].create_index(
+                'criado_em', expireAfterSeconds=self.CACHE_TTL_SEGUNDOS
+            )
+        except Exception as e:
+            logger.debug(f"Índice TTL cache_busca_localizacao já existe ou falhou: {e}")
+
+    async def _buscar_cache_localizacao(self, cache_key: str) -> Optional[Dict]:
+        if self.db is None:
+            return None
+        try:
+            doc = await self.db[self.CACHE_COLLECTION].find_one({'_id': cache_key})
+            if doc:
+                return doc.get('resultado')
+        except Exception as e:
+            logger.error(f"Erro lendo cache_busca_localizacao: {e}")
+        return None
+
+    async def _salvar_cache_localizacao(self, cache_key: str, resultado: Dict):
+        if self.db is None:
+            return
+        try:
+            await self._garantir_indice_cache()
+            await self.db[self.CACHE_COLLECTION].update_one(
+                {'_id': cache_key},
+                {'$set': {'resultado': resultado, 'criado_em': datetime.now(timezone.utc)}},
+                upsert=True
+            )
+        except Exception as e:
+            logger.error(f"Erro salvando cache_busca_localizacao: {e}")
 
     def _map_consulta_proposta(self, item: Dict) -> Optional[Dict]:
         """Mapeia contratação da API de Consulta (/contratacoes/proposta) para o schema GSM."""

@@ -18,10 +18,12 @@ export function useSearch() {
   const [perPage, setPerPage] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
   const [paginationInfo, setPaginationInfo] = useState(null);
+  const [avisoFonte, setAvisoFonte] = useState(null);
 
   const executarBusca = async (termo, cidade, uf, smart = false, page = 1) => {
     if (!termo && !cidade && !uf) return;
     setIsLoading(true);
+    setAvisoFonte(null);
     try {
       const params = new URLSearchParams();
       if (termo) params.append('q', termo);
@@ -30,11 +32,12 @@ export function useSearch() {
       if (smart) params.append('smart_search', 'true');
       params.append('limit', perPage);
       params.append('page', page || currentPage);
-      
+
       const res = await axios.get(`${API}/search/unified?${params.toString()}`);
       const resultados = res.data.resultados || [];
       setTotalResults(res.data.total || resultados.length);
       setPaginationInfo(res.data.pagination || null);
+      if (res.data.fonte_disponivel === false) setAvisoFonte(res.data.aviso || 'Fonte de dados indisponível no momento.');
       if (page) setCurrentPage(page);
       
       setResults(resultados.map(e => ({
@@ -128,6 +131,7 @@ export function useSearch() {
     perPage, setPerPage,
     currentPage, setCurrentPage,
     paginationInfo,
+    avisoFonte,
     API,
   };
 }

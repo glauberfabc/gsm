@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Info, Sparkles, Package, MapPin, Globe, Loader2, Radar, CheckCircle, Database, Hash, Building, Tag, Star, Calendar, Clock, DollarSign, ChevronRight, Download } from 'lucide-react';
+import { Search, Info, Sparkles, Package, MapPin, Globe, Loader2, Radar, CheckCircle, Database, Hash, Building, Tag, Star, Calendar, Clock, DollarSign, ChevronRight, Download, AlertTriangle } from 'lucide-react';
 import { HighlightText } from '../common/HighlightText';
 import axios from 'axios';
 
@@ -16,6 +16,7 @@ export function SearchTab({
   perPage, setPerPage,
   currentPage, setCurrentPage,
   paginationInfo,
+  avisoFonte,
 }) {
   const highlightText = (text, highlight) => <HighlightText text={text} highlight={highlight} />;
 
@@ -101,6 +102,14 @@ export function SearchTab({
           </div>
         </div>
       </div>
+
+      {/* AVISO DE INSTABILIDADE DA FONTE (PNCP) */}
+      {avisoFonte && (
+        <div className="flex items-center gap-3 bg-amber-50 border-2 border-amber-200 text-amber-800 px-5 py-4 rounded-2xl text-sm font-bold">
+          <AlertTriangle size={20} className="shrink-0 text-amber-500"/>
+          {avisoFonte}
+        </div>
+      )}
 
       {/* RADARES DE ATALHO */}
       <div className="flex flex-wrap gap-3 px-2">

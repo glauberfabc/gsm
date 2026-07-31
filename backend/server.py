@@ -1301,6 +1301,8 @@ async def search_unified(
             "total": total,
             "resultados": resultado.get('resultados', []),
             "fontes": resultado.get('fontes', {}),
+            "fonte_disponivel": resultado.get('fonte_disponivel', True),
+            "aviso": resultado.get('aviso'),
             "pagination": {
                 "page": page,
                 "per_page": limit,
