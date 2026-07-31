@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 # Pool de threads para scrapers síncronos (PNCP, ComprasNet)
 _thread_pool = ThreadPoolExecutor(max_workers=10)
 
+# Limite de browsers Chromium (Playwright) simultâneos.
+# Cada instância consome ~300-500MB de RAM; a VPS tem só ~3.6GB no total,
+# então rodar os 5 scrapers baseados em browser (BEC/SP, RJ, RS, SC, PR) em
+# paralelo sem limite é o principal responsável pelo esgotamento de memória.
+_playwright_semaphore = asyncio.Semaphore(2)
+
 class ScraperService:
     """
     Serviço de agregação de scrapers
@@ -124,19 +130,22 @@ class ScraperService:
         medicamento: str,
         is_sync: bool = False,
         timeout_seconds: int = 30,
+        usa_browser: bool = False,
         **kwargs
     ) -> Tuple[str, List[Dict], int, Optional[str]]:
         """
         Executa um scraper individual com TIMEOUT e retorna resultado padronizado.
-        
+
         Args:
             nome_fonte: Nome da fonte para logging
             coro_or_func: Coroutine ou função síncrona a executar
             medicamento: Termo de busca
             is_sync: Se True, executa em thread pool
             timeout_seconds: Timeout em segundos (padrão: 30s)
+            usa_browser: Se True, limita concorrência via _playwright_semaphore
+                (scraper abre um Chromium e consome bastante RAM)
             **kwargs: Argumentos adicionais para o scraper
-            
+
         Returns:
             Tuple[nome_fonte, resultados, tempo_ms, erro_msg]
         """
@@ -149,6 +158,11 @@ class ScraperService:
                     loop.run_in_executor(_thread_pool, coro_or_func),
                     timeout=timeout_seconds
                 )
+            elif usa_browser:
+                # Aguarda vaga no semáforo (sem contar no timeout do scraper)
+                # e só então executa a coroutine com o timeout normal.
+                async with _playwright_semaphore:
+                    dados = await asyncio.wait_for(coro_or_func, timeout=timeout_seconds)
             else:
                 # Executar coroutine com timeout
                 dados = await asyncio.wait_for(coro_or_func, timeout=timeout_seconds)
@@ -264,9 +278,10 @@ class ScraperService:
                     limit=limit_por_fonte
                 ),
                 medicamento,
-                timeout_seconds=40
+                timeout_seconds=40,
+                usa_browser=True
             ))
-            
+
             # RJ (SIGA) - scraper web
             tasks.append(self._executar_scraper_async(
                 'RJ',
@@ -276,9 +291,10 @@ class ScraperService:
                     limit=limit_por_fonte
                 ),
                 medicamento,
-                timeout_seconds=25
+                timeout_seconds=25,
+                usa_browser=True
             ))
-            
+
             # RS (CELIC) - scraper web
             tasks.append(self._executar_scraper_async(
                 'RS',
@@ -288,9 +304,10 @@ class ScraperService:
                     limit=limit_por_fonte
                 ),
                 medicamento,
-                timeout_seconds=25
+                timeout_seconds=25,
+                usa_browser=True
             ))
-            
+
             # SC (CIASC) - scraper web
             tasks.append(self._executar_scraper_async(
                 'SC',
@@ -300,9 +317,10 @@ class ScraperService:
                     limit=limit_por_fonte
                 ),
                 medicamento,
-                timeout_seconds=25
+                timeout_seconds=25,
+                usa_browser=True
             ))
-            
+
             # PR (CSV) - arquivo ~1MB
             tasks.append(self._executar_scraper_async(
                 'PR',
@@ -312,7 +330,8 @@ class ScraperService:
                     limit=limit_por_fonte
                 ),
                 medicamento,
-                timeout_seconds=40
+                timeout_seconds=40,
+                usa_browser=True
             ))
             
             # BA (CSV) - arquivo grande ~120MB
