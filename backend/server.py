@@ -1274,14 +1274,15 @@ async def search_unified(
     inicio = time.time()
     
     try:
-        if not q or len(q.strip()) < 2:
-            raise HTTPException(status_code=400, detail="Termo de busca muito curto")
-        
+        tem_localizacao = bool((municipio and municipio.strip()) or (uf and uf.strip()) or (estados and estados.strip()))
+        if not tem_localizacao and (not q or len(q.strip()) < 2):
+            raise HTTPException(status_code=400, detail="Informe um termo de busca (mín. 2 caracteres) ou um filtro de Município/Estado")
+
         from services.motor_independente import MotorBuscaIndependente
         motor = MotorBuscaIndependente(db=db)
-        
+
         resultado = await motor.buscar(
-            termo=q.strip(),
+            termo=(q or '').strip(),
             pagina=page,
             uf=uf,
             estados=estados,

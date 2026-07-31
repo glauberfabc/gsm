@@ -180,8 +180,8 @@ export function SearchTab({
         ) : (
           <div className="py-20 text-center text-slate-300 border-2 border-dashed border-slate-200 rounded-3xl">
             <Search size={48} className="mx-auto mb-4 opacity-50"/>
-            <p className="font-black uppercase tracking-wider text-sm">Digite um termo e clique em Pesquisar</p>
-            <p className="text-xs mt-2">Use os filtros: Medicamento, Municipio ou Estado</p>
+            <p className="font-black uppercase tracking-wider text-sm">Digite um termo, cidade ou estado e clique em Pesquisar</p>
+            <p className="text-xs mt-2">Use os filtros: Medicamento, Municipio ou Estado (isoladamente ou combinados)</p>
           </div>
         )}
       </div>

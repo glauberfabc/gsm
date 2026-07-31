@@ -20,7 +20,7 @@ export function useSearch() {
   const [paginationInfo, setPaginationInfo] = useState(null);
 
   const executarBusca = async (termo, cidade, uf, smart = false, page = 1) => {
-    if (!termo && !cidade) return;
+    if (!termo && !cidade && !uf) return;
     setIsLoading(true);
     try {
       const params = new URLSearchParams();

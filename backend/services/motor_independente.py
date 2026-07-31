@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 PNCP_SEARCH = "https://pncp.gov.br/api/search/"
 PNCP_API = "https://pncp.gov.br/pncp-api/v1"
+PNCP_CONSULTA = "https://pncp.gov.br/api/consulta/v1"
 COMPRAS_GOV = "https://dadosabertos.compras.gov.br"
 
 from backend.services.comprasgov_service import get_comprasgov_service
@@ -38,13 +39,30 @@ class MotorBuscaIndependente:
 
     async def buscar(
         self,
-        termo: str,
+        termo: str = '',
         pagina: int = 1,
         uf: str = None,
         modalidade: str = None,
         limit: int = 50,
         **kwargs
     ) -> Dict:
+        termo = (termo or '').strip()
+        uf_final = uf or kwargs.get('estados')
+        municipio_busca = kwargs.get('municipio')
+
+        # v80.0: Busca SEM termo — apenas por Município e/ou UF.
+        # A busca full-text (ElasticSearch) do PNCP não filtra por localização
+        # no servidor, então usamos a API oficial de Consulta (contratacoes/proposta),
+        # que suporta uf e codigoMunicipioIbge nativamente.
+        if not termo and (uf_final or municipio_busca):
+            return await self._buscar_por_localizacao(
+                uf=uf_final,
+                municipio=municipio_busca,
+                pagina=pagina,
+                limit=limit,
+                modalidade=modalidade
+            )
+
         # Remove duplicados preservando a ordem e define limite de até 20 termos
         termos_unicos = []
         for t in termo.split(','):
@@ -79,14 +97,11 @@ class MotorBuscaIndependente:
         todos = self._dedup(todos)
 
         # Filtros de Pós-Processamento
-        uf_final = uf or kwargs.get('estados')
-        municipio = kwargs.get('municipio')
-
         if uf_final:
             todos = [r for r in todos if (r.get('uf') or '').upper() == uf_final.upper()]
-        
-        if municipio:
-            m_comp = municipio.lower()
+
+        if municipio_busca:
+            m_comp = municipio_busca.lower()
             todos = [r for r in todos if m_comp in (r.get('municipio') or '').lower()]
 
         if modalidade:
@@ -103,6 +118,136 @@ class MotorBuscaIndependente:
                 'compras_gov_br': total_compras
             }
         }
+
+    # ─── PNCP — Busca por Localização (sem termo) ─────────
+    async def _buscar_por_localizacao(
+        self,
+        uf: str = None,
+        municipio: str = None,
+        pagina: int = 1,
+        limit: int = 50,
+        modalidade: str = None
+    ) -> Dict:
+        """
+        Lista TODOS os editais com propostas abertas de um Município e/ou UF,
+        usando a API oficial de Consulta do PNCP (filtra no servidor por
+        uf/codigoMunicipioIbge — ao contrário da busca full-text por termo).
+        """
+        from services.municipio_resolver import resolver_municipio
+
+        codigo_ibge = None
+        if municipio:
+            info = await resolver_municipio(municipio, uf)
+            if info:
+                codigo_ibge = info['codigo_ibge']
+                if not uf:
+                    uf = info['uf']
+            else:
+                logger.warning(f"⚠️ [LOCALIZACAO] Município '{municipio}' não encontrado na base do IBGE")
+                return {'resultados': [], 'total': 0, 'pagina': pagina, 'fontes': {'pncp_gov_br': 0, 'compras_gov_br': 0}}
+
+        PNCP_PAGE_SIZE = 50
+        idx_inicio = (pagina - 1) * limit
+        idx_fim = pagina * limit
+        pg_inicio = (idx_inicio // PNCP_PAGE_SIZE) + 1
+        pg_fim = max(pg_inicio, -(-idx_fim // PNCP_PAGE_SIZE))  # ceil division
+
+        hoje = datetime.now()
+        params_base = {
+            'dataInicial': (hoje - timedelta(days=60)).strftime('%Y%m%d'),
+            'dataFinal': (hoje + timedelta(days=180)).strftime('%Y%m%d'),
+            'tamanhoPagina': PNCP_PAGE_SIZE
+        }
+        if uf:
+            params_base['uf'] = uf.upper()
+        if codigo_ibge:
+            params_base['codigoMunicipioIbge'] = codigo_ibge
+
+        brutos = []
+        total = 0
+        try:
+            async with aiohttp.ClientSession(timeout=self.timeout) as s:
+                for pg in range(pg_inicio, pg_fim + 1):
+                    params = {**params_base, 'pagina': pg}
+                    async with s.get(f"{PNCP_CONSULTA}/contratacoes/proposta", params=params) as r:
+                        if r.status != 200:
+                            break
+                        data = await r.json()
+                        total = data.get('totalRegistros', 0)
+                        itens = data.get('data', [])
+                        if not itens:
+                            break
+                        brutos.extend(itens)
+        except Exception as e:
+            logger.error(f"Erro busca por localização (uf={uf}, municipio={municipio}): {e}")
+
+        mapeados = [m for it in brutos if (m := self._map_consulta_proposta(it))]
+
+        if modalidade:
+            mapeados = [r for r in mapeados if modalidade.lower() in (r.get('modalidade') or '').lower()]
+
+        mapeados = self._dedup(mapeados)
+
+        # Recorta exatamente a fatia pedida dentro do bloco de páginas PNCP buscado
+        offset_local = idx_inicio - (pg_inicio - 1) * PNCP_PAGE_SIZE
+        pagina_resultados = mapeados[offset_local: offset_local + limit]
+
+        logger.info(f"🌍 [PNCP-LOCALIZACAO] uf={uf} municipio={municipio}: {len(pagina_resultados)} de {total} totais")
+
+        return {
+            'resultados': pagina_resultados,
+            'total': total,
+            'pagina': pagina,
+            'fontes': {'pncp_gov_br': total, 'compras_gov_br': 0}
+        }
+
+    def _map_consulta_proposta(self, item: Dict) -> Optional[Dict]:
+        """Mapeia contratação da API de Consulta (/contratacoes/proposta) para o schema GSM."""
+        try:
+            orgao_entidade = item.get('orgaoEntidade', {}) or {}
+            unidade = item.get('unidadeOrgao', {}) or {}
+
+            cnpj = orgao_entidade.get('cnpj', '')
+            ano = str(item.get('anoCompra', ''))
+            seq = str(item.get('sequencialCompra', ''))
+            uf = unidade.get('ufSigla', '')
+            municipio = unidade.get('municipioNome', '')
+            orgao = orgao_entidade.get('razaoSocial', '') or unidade.get('nomeUnidade', '')
+            objeto = (item.get('objetoCompra', '') or '').upper()
+            numero_pncp = item.get('numeroControlePNCP', '')
+
+            link_pagina = f"https://pncp.gov.br/app/editais/{cnpj}/{ano}/{seq}" if (cnpj and ano and seq) else ''
+            link_download = f"/api/editais/download/{cnpj}/{ano}/{seq}" if (cnpj and ano and seq) else ''
+            id_gsm = hashlib.md5(f"PNCP-{numero_pncp}".encode()).hexdigest() if numero_pncp else ''
+
+            return {
+                'id': id_gsm,
+                'id_gsm': id_gsm,
+                'id_externo': numero_pncp,
+                'numero_controle_pncp': numero_pncp,
+                'fonte': 'PNCP',
+                'portal_captura': f"PNCP ({uf})" if uf else 'PNCP',
+                'objeto': objeto,
+                'orgao': orgao,
+                'uf': uf,
+                'municipio': municipio,
+                'modalidade': item.get('modalidadeNome', ''),
+                'data_publicacao': item.get('dataPublicacaoPncp', ''),
+                'data_abertura': item.get('dataAberturaProposta', ''),
+                'data_final': item.get('dataEncerramentoProposta', ''),
+                'valor_estimado': item.get('valorTotalEstimado', 0),
+                'link_portal': link_pagina,
+                'link_pdf': link_download,
+                'link_edital': link_pagina,
+                '_pncp_cnpj': cnpj,
+                '_pncp_ano': ano,
+                '_pncp_seq': seq,
+                'itens': '',
+                'ativo': True
+            }
+        except Exception as e:
+            logger.error(f"Erro mapeando contratação (localização): {e}")
+            return None
 
     # ─── PNCP (fonte principal) ───────────────────────────
     async def _buscar_pncp(self, termo: str, pagina: int) -> Dict:
