@@ -49,6 +49,9 @@ async def editar_usuario(user_id: str, payload: UserUpdate, request: Request):
 
     updates = {}
     if payload.email is not None:
+        duplicate = await db.users.find_one({"email": payload.email, "id": {"$ne": user_id}})
+        if duplicate:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ja existe um usuario com esse email")
         updates["email"] = payload.email
     if payload.password is not None:
         updates["password_hash"] = hash_password(payload.password)

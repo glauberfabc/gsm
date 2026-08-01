@@ -74,6 +74,19 @@ def test_super_admin_can_edit_user_role(clean_users, mongo_db):
     assert response.json()["role"] == "super_admin"
 
 
+def test_editing_email_to_existing_duplicate_returns_409(clean_users, mongo_db):
+    create_test_user(mongo_db, "admin@gsm.com", "senha123", role="super_admin")
+    create_test_user(mongo_db, "a@gsm.com", "senha123", role="normal")
+    other = create_test_user(mongo_db, "b@gsm.com", "senha123", role="normal")
+    token = _login("admin@gsm.com", "senha123")
+
+    response = requests.put(f"{BASE_URL}/api/users/{other['id']}", headers=_auth_headers(token), json={
+        "email": "a@gsm.com"
+    })
+
+    assert response.status_code == 409
+
+
 def test_cannot_delete_own_account(clean_users, mongo_db):
     admin = create_test_user(mongo_db, "admin@gsm.com", "senha123", role="super_admin")
     token = _login("admin@gsm.com", "senha123")
