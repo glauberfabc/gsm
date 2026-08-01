@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ListChecks, Radar, TrendingUp, Pill, Zap, Settings, ShieldCheck, BriefcaseBusiness, Target, Bell, Activity } from 'lucide-react';
+import { Search, ListChecks, Radar, TrendingUp, Pill, Zap, Settings, ShieldCheck, BriefcaseBusiness, Target, Bell, Activity, Users, LogOut } from 'lucide-react';
 
 const TABS = [
   { id: 'search', label: 'Pesquisa', icon: Search, color: 'blue' },
@@ -13,7 +13,7 @@ const TABS = [
   { id: 'dama', label: 'DAMA IA', icon: Zap, color: 'purple' },
 ];
 
-export default function Header({ activeTab: propsActiveTab, setActiveTab: propsSetActiveTab, onAnvisaLoad, notificacoes }) {
+export default function Header({ activeTab: propsActiveTab, setActiveTab: propsSetActiveTab, onAnvisaLoad, notificacoes, user, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { notificacoes: alertas = [], naoLidas = 0, showDropdown, setShowDropdown, marcarLida } = notificacoes || {};
@@ -30,6 +30,10 @@ export default function Header({ activeTab: propsActiveTab, setActiveTab: propsS
   };
 
   const activeTab = getActiveTabFromPath();
+
+  const tabs = user?.role === 'super_admin'
+    ? [...TABS, { id: 'usuarios', label: 'Usuarios', icon: Users, color: 'slate' }]
+    : TABS;
 
   const handleTabClick = (tabId) => {
     if (tabId === 'search') navigate('/');
@@ -72,7 +76,7 @@ export default function Header({ activeTab: propsActiveTab, setActiveTab: propsS
         
         <nav className="flex items-center gap-2">
           <div className="flex bg-slate-800 p-1.5 rounded-2xl border border-slate-700">
-            {TABS.map(tab => (
+            {tabs.map(tab => (
               <button 
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id)}
@@ -156,6 +160,15 @@ export default function Header({ activeTab: propsActiveTab, setActiveTab: propsS
             className={`p-3 transition-all rounded-xl ${activeTab === 'settings' ? 'text-white bg-slate-700' : 'text-slate-400 hover:text-white'}`}
           >
             <Settings size={22}/>
+          </button>
+
+          <button
+            onClick={onLogout}
+            data-testid="logout-button"
+            className="p-3 text-slate-400 hover:text-red-400 transition-all rounded-xl"
+            title="Sair"
+          >
+            <LogOut size={22} />
           </button>
         </nav>
       </div>
