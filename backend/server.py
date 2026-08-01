@@ -123,15 +123,14 @@ async def root():
 # ==================== ROTAS DE LISTAS CUSTOMIZADAS ====================
 
 @api_router.post("/listas", response_model=dict, status_code=201)
-async def criar_lista(lista: ListaMedicamentosCreate):
+async def criar_lista(lista: ListaMedicamentosCreate, current_user: User = Depends(get_current_user)):
     """
     Cria uma nova lista customizada de medicamentos
-    
+
     Limite: Máximo 5 listas por usuário
     """
     try:
-        # TODO: Quando implementar autenticação, usar user_id real
-        user_id = "default_user"
+        user_id = current_user.id
         
         # Verificar limite de 5 listas
         count = await db.listas_medicamentos.count_documents({"user_id": user_id})
@@ -186,13 +185,12 @@ async def criar_lista(lista: ListaMedicamentosCreate):
 
 
 @api_router.get("/listas", response_model=dict)
-async def listar_listas():
+async def listar_listas(current_user: User = Depends(get_current_user)):
     """
     Lista todas as listas customizadas do usuário
     """
     try:
-        # TODO: Quando implementar autenticação, usar user_id real
-        user_id = "default_user"
+        user_id = current_user.id
         
         listas = await db.listas_medicamentos.find(
             {"user_id": user_id},
@@ -6335,7 +6333,7 @@ async def extrair_itens_filtrado(
 
 
 # Include the router in the main app
-app.include_router(api_router)
+app.include_router(api_router, dependencies=[Depends(get_current_user)])
 
 app.include_router(auth_router)
 app.include_router(users_router, dependencies=[Depends(require_super_admin)])
