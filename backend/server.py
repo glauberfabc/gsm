@@ -65,8 +65,9 @@ from scheduler import init_scheduler, shutdown_scheduler
 from services.sync_service import SyncService, init_sync_service
 from services.email_service import get_email_service
 from models.user import User
-from utils.security import get_current_user
+from utils.security import get_current_user, require_super_admin
 from routers.auth_router import router as auth_router
+from routers.users_router import router as users_router
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -6337,6 +6338,7 @@ async def extrair_itens_filtrado(
 app.include_router(api_router)
 
 app.include_router(auth_router)
+app.include_router(users_router, dependencies=[Depends(require_super_admin)])
 
 app.add_middleware(
     CORSMiddleware,
