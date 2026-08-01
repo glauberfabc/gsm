@@ -7,9 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from models.user import User, UserPublic
-from utils.security import create_access_token, get_current_user, verify_password
+from utils.security import create_access_token, get_current_user, hash_password, verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+_DUMMY_HASH_FOR_TIMING = hash_password("dummy-constant-for-timing-safety")
 
 
 class LoginRequest(BaseModel):
@@ -27,7 +29,9 @@ class LoginResponse(BaseModel):
 async def login(payload: LoginRequest, request: Request):
     db = request.app.state.db
     user_doc = await db.users.find_one({"email": payload.email}, {"_id": 0})
-    if not user_doc or not verify_password(payload.password, user_doc["password_hash"]):
+    hash_to_check = user_doc["password_hash"] if user_doc else _DUMMY_HASH_FOR_TIMING
+    password_ok = verify_password(payload.password, hash_to_check)
+    if not user_doc or not password_ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Email ou senha invalidos")
 
     user = User(**user_doc)
