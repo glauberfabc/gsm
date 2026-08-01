@@ -32,10 +32,12 @@ export function Login() {
         <h1 className="text-2xl font-black text-slate-800 uppercase text-center">GSM Intelligence</h1>
 
         <div className="space-y-2">
-          <label className="text-xs font-black text-slate-500 uppercase">Email</label>
+          <label htmlFor="login-email" className="text-xs font-black text-slate-500 uppercase">Email</label>
           <input
+            id="login-email"
             type="email"
             required
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-400"
@@ -44,10 +46,12 @@ export function Login() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-black text-slate-500 uppercase">Senha</label>
+          <label htmlFor="login-password" className="text-xs font-black text-slate-500 uppercase">Senha</label>
           <input
+            id="login-password"
             type="password"
             required
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-400"
