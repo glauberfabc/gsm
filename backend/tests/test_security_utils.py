@@ -35,3 +35,26 @@ def test_hash_password_is_salted_differently_each_time():
     hash1 = hash_password("minhasenha123")
     hash2 = hash_password("minhasenha123")
     assert hash1 != hash2
+
+
+import pytest
+import jwt as pyjwt
+from models.user import User
+from utils.security import create_access_token, decode_access_token
+
+
+def _sample_user():
+    return User(id="user-123", email="a@b.com", password_hash="hashed", role="normal")
+
+
+def test_create_access_token_can_be_decoded_back():
+    user = _sample_user()
+    token = create_access_token(user)
+    payload = decode_access_token(token)
+    assert payload["sub"] == "user-123"
+    assert payload["role"] == "normal"
+
+
+def test_decode_access_token_rejects_garbage_token():
+    with pytest.raises(pyjwt.PyJWTError):
+        decode_access_token("isso-nao-e-um-jwt-valido")
