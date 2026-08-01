@@ -2,6 +2,8 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Login } from './components/Login';
 
 import ErrorBoundary from './components/common/ErrorBoundary';
 import Header from './components/layout/Header';
@@ -41,6 +43,7 @@ const LazyFallback = (
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('search');
+  const { user, logout } = useAuth();
 
   const search = useSearch();
   const precos = usePrecos();
@@ -80,6 +83,8 @@ function AppContent() {
         setActiveTab={setActiveTab}
         onAnvisaLoad={anvisa.carregarAnvisa}
         notificacoes={notificacoesHook}
+        user={user}
+        onLogout={logout}
       />
 
       <main className="flex-grow max-w-7xl mx-auto w-full py-8 px-6">
@@ -194,11 +199,31 @@ function AppContent() {
   );
 }
 
+function AuthGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <Loader2 className="animate-spin text-blue-500" size={48} />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
+  return <AppContent />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <AppContent />
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );
