@@ -20,6 +20,7 @@ const AnvisaTab = lazy(() => import('./components/tabs/AnvisaTab').then(m => ({ 
 const SettingsTab = lazy(() => import('./components/tabs/SettingsTab').then(m => ({ default: m.SettingsTab })));
 const RadarLmrTab = lazy(() => import('./components/tabs/RadarLmrTab').then(m => ({ default: m.RadarLmrTab })));
 const RadarFarmaceuticoTab = lazy(() => import('./components/tabs/RadarFarmaceuticoTab').then(m => ({ default: m.RadarFarmaceuticoTab })));
+const UsersTab = lazy(() => import('./components/tabs/UsersTab').then(m => ({ default: m.UsersTab })));
 
 import { useSearch } from './hooks/useSearch';
 import { usePrecos } from './hooks/usePrecos';
@@ -184,6 +185,12 @@ function AppContent() {
               cancelEditCompany={companiesHook.cancelEditCompany}
               saveCompany={companiesHook.saveCompany}
             />
+          </Suspense>
+        )}
+
+        {activeTab === 'usuarios' && (
+          <Suspense fallback={LazyFallback}>
+            <UsersTab />
           </Suspense>
         )}
 
