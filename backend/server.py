@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query, File, UploadFile, Form, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, Query, File, UploadFile, Form, BackgroundTasks, Depends
 from fastapi.responses import StreamingResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -64,6 +64,9 @@ from services.data_enrichment_service import data_enrichment_service
 from scheduler import init_scheduler, shutdown_scheduler
 from services.sync_service import SyncService, init_sync_service
 from services.email_service import get_email_service
+from models.user import User
+from utils.security import get_current_user
+from routers.auth_router import router as auth_router
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -75,6 +78,7 @@ db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
 app = FastAPI(title="BEM - Buscador Estadual de Medicamentos")
+app.state.db = db
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -6331,6 +6335,8 @@ async def extrair_itens_filtrado(
 
 # Include the router in the main app
 app.include_router(api_router)
+
+app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
