@@ -40,7 +40,8 @@ export default function Header({ activeTab: propsActiveTab, setActiveTab: propsS
     else if (tabId === 'radar-farma') navigate('/radar-farma');
     else if (tabId === 'anvisa') navigate('/dashboard');
     else if (tabId === 'notificacoes') navigate('/notificacoes');
-    
+    else navigate('/'); // abas sem rota propria: garante que a URL nao fique presa numa rota antiga (ex: /radar-farma), o que travava o destaque no header
+
     if (propsSetActiveTab) propsSetActiveTab(tabId);
     if (tabId === 'anvisa' && onAnvisaLoad) onAnvisaLoad();
   };
