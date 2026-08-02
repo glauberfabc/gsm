@@ -374,7 +374,7 @@ class MedicamentoSearchService:
                 {"medicamento": r},
             ])
 
-        cursor = self.db.anvisa_alerts.find(
+        cursor = self.db.anvisa_alertas.find(
             {"$or": or_conditions},
             {"_id": 0}
         ).sort("coletado_em", -1).limit(20)
@@ -395,7 +395,7 @@ class MedicamentoSearchService:
                 {"principio_ativo": r},
                 {"titulo": r},
             ])
-        cursor = self.db.anvisa_alerts.find(
+        cursor = self.db.anvisa_alertas.find(
             {"$and": [
                 {"is_cmed": True},
                 {"$or": or_conditions},

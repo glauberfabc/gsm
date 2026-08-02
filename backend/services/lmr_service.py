@@ -117,7 +117,7 @@ class LmrService:
         """Classifica o medicamento na LMR (Lista de Medicamentos de Referencia)"""
         # Verificar se tem janela aberta (desabastecimento)
         try:
-            alertas = await self.db.anvisa_alerts.find(
+            alertas = await self.db.anvisa_alertas.find(
                 {'$or': [
                     {'medicamento': {'$regex': medicamento, '$options': 'i'}},
                     {'medicamento_detectado': {'$regex': medicamento, '$options': 'i'}},
@@ -394,7 +394,7 @@ class LmrService:
     async def listar_oportunidades(self, limite: int = 20) -> Dict:
         """Lista oportunidades de importacao rankeadas por score"""
         try:
-            alertas = await self.db.anvisa_alerts.find(
+            alertas = await self.db.anvisa_alertas.find(
                 {'janela_importacao': True},
                 {'_id': 0}
             ).to_list(length=100)

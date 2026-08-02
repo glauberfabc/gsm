@@ -270,7 +270,7 @@ class DamaChecklistService:
 
     async def _check_publicacao_oficial(self, medicamento: str) -> Dict:
         try:
-            alertas = await self.db.anvisa_alerts.find(
+            alertas = await self.db.anvisa_alertas.find(
                 {'$or': [
                     {'medicamento': {'$regex': medicamento, '$options': 'i'}},
                     {'medicamento_detectado': {'$regex': medicamento, '$options': 'i'}},

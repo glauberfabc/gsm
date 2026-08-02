@@ -79,13 +79,13 @@ class TestAnvisaAlertSetup:
         }
         
         # Insert test alert
-        db.anvisa_alerts.insert_one(self.test_alert.copy())
+        db.anvisa_alertas.insert_one(self.test_alert.copy())
         print(f"✅ Test ANVISA alert created: {self.test_medicamento}")
         
         yield
         
         # Cleanup after tests
-        db.anvisa_alerts.delete_many({"medicamento": {"$regex": "^TEST_"}})
+        db.anvisa_alertas.delete_many({"medicamento": {"$regex": "^TEST_"}})
         db.oportunidades_alertas.delete_many({"medicamento": {"$regex": "^TEST_"}})
         print("✅ Test data cleaned up")
     
@@ -166,7 +166,7 @@ class TestOportunidadesAlertasCollection:
         
         # Create test ANVISA alert
         self.test_medicamento = "TEST_DIPIRONA_EMAIL_FIELDS"
-        db.anvisa_alerts.insert_one({
+        db.anvisa_alertas.insert_one({
             "medicamento": self.test_medicamento,
             "medicamento_detectado": self.test_medicamento,
             "principio_ativo": "Dipirona",
@@ -179,7 +179,7 @@ class TestOportunidadesAlertasCollection:
         yield
         
         # Cleanup
-        db.anvisa_alerts.delete_many({"medicamento": {"$regex": "^TEST_"}})
+        db.anvisa_alertas.delete_many({"medicamento": {"$regex": "^TEST_"}})
         db.oportunidades_alertas.delete_many({"medicamento": {"$regex": "^TEST_"}})
     
     def test_alert_has_email_fields(self):
@@ -257,7 +257,7 @@ class TestNoDuplicateAlerts:
         db = get_db_sync()
         
         self.test_medicamento = "TEST_DUPLICATE_CHECK"
-        db.anvisa_alerts.insert_one({
+        db.anvisa_alertas.insert_one({
             "medicamento": self.test_medicamento,
             "medicamento_detectado": self.test_medicamento,
             "principio_ativo": "Test Drug",
@@ -270,7 +270,7 @@ class TestNoDuplicateAlerts:
         yield
         
         # Cleanup
-        db.anvisa_alerts.delete_many({"medicamento": {"$regex": "^TEST_"}})
+        db.anvisa_alertas.delete_many({"medicamento": {"$regex": "^TEST_"}})
         db.oportunidades_alertas.delete_many({"medicamento": {"$regex": "^TEST_"}})
     
     def test_no_duplicate_alerts_within_24h(self):
@@ -373,7 +373,7 @@ class TestEmailDestination:
         db = get_db_sync()
         
         self.test_medicamento = "TEST_EMAIL_DESTINATION"
-        db.anvisa_alerts.insert_one({
+        db.anvisa_alertas.insert_one({
             "medicamento": self.test_medicamento,
             "medicamento_detectado": self.test_medicamento,
             "principio_ativo": "Test Drug Destination",
@@ -386,7 +386,7 @@ class TestEmailDestination:
         yield
         
         # Cleanup
-        db.anvisa_alerts.delete_many({"medicamento": {"$regex": "^TEST_"}})
+        db.anvisa_alertas.delete_many({"medicamento": {"$regex": "^TEST_"}})
         db.oportunidades_alertas.delete_many({"medicamento": {"$regex": "^TEST_"}})
     
     def test_email_sent_to_verified_email(self):

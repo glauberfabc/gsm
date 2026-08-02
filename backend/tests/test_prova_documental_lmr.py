@@ -113,7 +113,7 @@ class TestLMRAlertLinkInMongoDB:
             'situacao': 'Desabastecimento confirmado',
             'criado_em': datetime.now(timezone.utc).isoformat(),
         }
-        db.anvisa_alerts.insert_one(anvisa_alert)
+        db.anvisa_alertas.insert_one(anvisa_alert)
         
         # Delete any existing alerts for this medicamento
         db.oportunidades_alertas.delete_many({'medicamento': test_medicamento})
@@ -152,7 +152,7 @@ class TestLMRAlertLinkInMongoDB:
             
         finally:
             # Cleanup
-            db.anvisa_alerts.delete_many({'medicamento': test_medicamento})
+            db.anvisa_alertas.delete_many({'medicamento': test_medicamento})
             db.oportunidades_alertas.delete_many({'medicamento': test_medicamento})
             client.close()
 
