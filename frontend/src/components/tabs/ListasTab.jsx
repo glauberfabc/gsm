@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, CheckCircle, Search } from 'lucide-react';
+import { Plus, CheckCircle, Search, Trash2 } from 'lucide-react';
 import axios from 'axios';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
@@ -72,6 +72,19 @@ export function ListasTab({ minhasListas, setMinhasListas, onSearch }) {
                   className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm uppercase hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                 >
                   <Search size={16}/> Pesquisar
+                </button>
+                <button
+                  onClick={() => {
+                    if (!window.confirm(`Deletar a lista "${list.name}"?`)) return;
+                    axios.delete(`${API}/listas/${list.id}`).then(() => {
+                      setMinhasListas(prev => prev.filter(l => l.id !== list.id));
+                    }).catch((err) => alert(err.response?.data?.detail || 'Erro ao deletar lista'));
+                  }}
+                  data-testid={`lista-delete-${list.id}`}
+                  className="px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 transition-all flex items-center justify-center"
+                  title="Deletar lista"
+                >
+                  <Trash2 size={16}/>
                 </button>
               </div>
             </div>
