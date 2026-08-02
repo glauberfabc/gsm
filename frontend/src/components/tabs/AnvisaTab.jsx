@@ -340,7 +340,7 @@ function ResultRow({ r, idx, medicamentoBuscado, companies, openEsclarecimento, 
           <button data-testid={`prova-documental-btn-${idx}`}
             onClick={() => damaChecklist?.gerarProvaDocumental({
               ...r,
-              medicamento_detectado: medicamentoBuscado,
+              medicamento_detectado: r.medicamento_detectado || r.medicamento || medicamentoBuscado,
             }, companies.find(c => c.name)?.id || '')}
             className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-[11px] font-bold hover:bg-amber-700 transition-colors">
             <FileDown size={12}/> Prova PDF
