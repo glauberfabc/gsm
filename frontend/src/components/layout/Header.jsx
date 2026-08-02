@@ -22,7 +22,7 @@ export default function Header({ activeTab: propsActiveTab, setActiveTab: propsS
   // Determinar aba ativa pela rota se não for passado via props
   const getActiveTabFromPath = () => {
     const path = location.pathname;
-    if (path === '/') return 'search';
+    if (path === '/') return propsActiveTab || 'search';
     if (path === '/notificacoes') return 'notificacoes';
     if (path === '/dashboard') return 'anvisa'; // Mapeamento legado do projeto
     if (path === '/radar-farma') return 'radar-farma';
