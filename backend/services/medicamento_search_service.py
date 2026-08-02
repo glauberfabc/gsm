@@ -31,6 +31,7 @@ Fontes:
 import re
 import json
 import logging
+import asyncio
 import urllib.parse
 import aiohttp
 from datetime import datetime, timezone, timedelta
@@ -98,6 +99,15 @@ class MedicamentoSearchService:
             'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
         }
 
+    async def _buscar_fonte(self, nome: str, coro) -> tuple:
+        """Executa a busca de uma fonte isolando falhas (usado com asyncio.gather)."""
+        try:
+            items = await coro
+            return nome, items, "ok"
+        except Exception as e:
+            logger.error(f"Erro busca {nome}: {e}")
+            return nome, [], "erro"
+
     async def buscar(self, medicamento: str) -> Dict:
         """Busca completa com priorização dinâmica DAMA."""
         termo = medicamento.strip()
@@ -108,59 +118,20 @@ class MedicamentoSearchService:
         fontes = []
 
         async with aiohttp.ClientSession(timeout=self.timeout, headers=self.headers) as session:
-            # 1. DOU - Busca por frases exatas
-            try:
-                dou_results = await self._buscar_dou(session, termo)
-                resultados.extend(dou_results)
-                fontes.append({"nome": "DOU - Diário Oficial da União", "total": len(dou_results), "status": "ok"})
-            except Exception as e:
-                logger.error(f"Erro busca DOU: {e}")
-                fontes.append({"nome": "DOU - Diário Oficial da União", "total": 0, "status": "erro"})
-
-            # 2. Base de Alertas GSM
-            try:
-                db_results = await self._buscar_alertas_db(termo)
-                resultados.extend(db_results)
-                fontes.append({"nome": "Base de Alertas GSM", "total": len(db_results), "status": "ok"})
-            except Exception as e:
-                logger.error(f"Erro busca DB: {e}")
-                fontes.append({"nome": "Base de Alertas GSM", "total": 0, "status": "erro"})
-
-            # 3. CMED risco
-            try:
-                cmed_results = await self._buscar_cmed_db(termo)
-                resultados.extend(cmed_results)
-                fontes.append({"nome": "CMED - Risco de Desabastecimento", "total": len(cmed_results), "status": "ok"})
-            except Exception as e:
-                logger.error(f"Erro busca CMED: {e}")
-                fontes.append({"nome": "CMED - Risco de Desabastecimento", "total": 0, "status": "erro"})
-
-            # 4. Notícias ANVISA
-            try:
-                noticias = await self._buscar_noticias_anvisa(session, termo)
-                resultados.extend(noticias)
-                fontes.append({"nome": "Notícias ANVISA", "total": len(noticias), "status": "ok"})
-            except Exception as e:
-                logger.error(f"Erro busca notícias: {e}")
-                fontes.append({"nome": "Notícias ANVISA", "total": 0, "status": "erro"})
-
-            # 5. PNCP - Deserto/Fracassado
-            try:
-                pncp_results = await self._buscar_pncp_deserto(session, termo)
-                resultados.extend(pncp_results)
-                fontes.append({"nome": "PNCP - Licitações Desertas/Fracassadas", "total": len(pncp_results), "status": "ok"})
-            except Exception as e:
-                logger.error(f"Erro busca PNCP deserto: {e}")
-                fontes.append({"nome": "PNCP - Licitações Desertas/Fracassadas", "total": 0, "status": "erro"})
-
-            # 6. ANVISA Descontinuação
-            try:
-                desc_results = await self._buscar_descontinuacao(session, termo)
-                resultados.extend(desc_results)
-                fontes.append({"nome": "ANVISA - Descontinuação", "total": len(desc_results), "status": "ok"})
-            except Exception as e:
-                logger.error(f"Erro busca descontinuação: {e}")
-                fontes.append({"nome": "ANVISA - Descontinuação", "total": 0, "status": "erro"})
+            # As 6 fontes são consultadas em paralelo via asyncio.gather() - cada uma
+            # com seu próprio try/except isolado, para que uma fonte lenta ou com erro
+            # não atrase nem derrube as demais.
+            tasks = [
+                self._buscar_fonte("DOU - Diário Oficial da União", self._buscar_dou(session, termo)),
+                self._buscar_fonte("Base de Alertas GSM", self._buscar_alertas_db(termo)),
+                self._buscar_fonte("CMED - Risco de Desabastecimento", self._buscar_cmed_db(termo)),
+                self._buscar_fonte("Notícias ANVISA", self._buscar_noticias_anvisa(session, termo)),
+                self._buscar_fonte("PNCP - Licitações Desertas/Fracassadas", self._buscar_pncp_deserto(session, termo)),
+                self._buscar_fonte("ANVISA - Descontinuação", self._buscar_descontinuacao(session, termo)),
+            ]
+            for nome, items, status in await asyncio.gather(*tasks):
+                resultados.extend(items)
+                fontes.append({"nome": nome, "total": len(items), "status": status})
 
         # Dedup
         seen = set()
@@ -307,7 +278,13 @@ class MedicamentoSearchService:
                     if not titulo or len(titulo) < 10:
                         continue
 
-                    abstract = item.get('abstract', '') or ''
+                    # O DOU retorna o trecho relevante no campo 'content' (com o termo
+                    # buscado destacado em <span class='highlight'>), não em 'abstract'.
+                    # 'abstract' não existe mais no formato atual da API; mantido como
+                    # fallback caso volte a aparecer em formatos antigos.
+                    abstract_raw = item.get('abstract') or item.get('content') or ''
+                    abstract = re.sub(r'<[^>]+>', ' ', abstract_raw)
+                    abstract = re.sub(r'\s+', ' ', abstract).strip()
 
                     # Filtro de relevância: o título ou abstract deve conter ao menos
                     # um termo significativo do medicamento buscado.
@@ -321,7 +298,7 @@ class MedicamentoSearchService:
 
                     resultados.append({
                         'titulo': titulo,
-                        'descricao': abstract or '',
+                        'descricao': abstract[:300] if abstract else '',
                         'link': link,
                         'data_publicacao': item.get('pubDate', ''),
                         'fonte': 'DOU',
@@ -605,8 +582,6 @@ class MedicamentoSearchService:
         como rotina (CBPF, certificação) vs impacto real.
         Verifica no máximo 5 resultados DOU para não impactar performance.
         """
-        import asyncio
-
         dou_para_refinar = [
             r for r in resultados
             if r.get('fonte_busca') == 'DOU'
