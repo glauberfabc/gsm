@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import axios from 'axios';
 
 const API_BASE = process.env.REACT_APP_BACKEND_URL;
 
@@ -12,9 +13,8 @@ export function useRadarFarmaceutico() {
 
   const carregarListaInteresse = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/radar-farmaceutico/lista-interesse`);
-      const data = await res.json();
-      setListaInteresse(data);
+      const res = await axios.get(`${API_BASE}/api/radar-farmaceutico/lista-interesse`);
+      setListaInteresse(res.data);
     } catch (e) {
       console.error('Erro ao carregar lista interesse:', e);
     }
@@ -23,10 +23,9 @@ export function useRadarFarmaceutico() {
   const carregarDesabastecimento = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/radar-farmaceutico/desabastecimento`);
-      const data = await res.json();
-      setDesabastecimento(data);
-      setStats(data.estatisticas);
+      const res = await axios.get(`${API_BASE}/api/radar-farmaceutico/desabastecimento`);
+      setDesabastecimento(res.data);
+      setStats(res.data.estatisticas);
     } catch (e) {
       console.error('Erro ao carregar desabastecimento:', e);
     } finally {
@@ -36,9 +35,8 @@ export function useRadarFarmaceutico() {
 
   const carregarStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/radar-farmaceutico/stats`);
-      const data = await res.json();
-      setStats(data);
+      const res = await axios.get(`${API_BASE}/api/radar-farmaceutico/stats`);
+      setStats(res.data);
     } catch (e) {
       console.error('Erro ao carregar stats:', e);
     }
@@ -47,16 +45,9 @@ export function useRadarFarmaceutico() {
   const adicionarInteresse = useCallback(async (item) => {
     setAddLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/radar-farmaceutico/lista-interesse`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item),
-      });
-      if (res.ok) {
-        await carregarListaInteresse();
-        return true;
-      }
-      return false;
+      await axios.post(`${API_BASE}/api/radar-farmaceutico/lista-interesse`, item);
+      await carregarListaInteresse();
+      return true;
     } catch (e) {
       console.error('Erro ao adicionar interesse:', e);
       return false;
@@ -67,14 +58,9 @@ export function useRadarFarmaceutico() {
 
   const removerInteresse = useCallback(async (itemId) => {
     try {
-      const res = await fetch(`${API_BASE}/api/radar-farmaceutico/lista-interesse/${itemId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        await carregarListaInteresse();
-        return true;
-      }
-      return false;
+      await axios.delete(`${API_BASE}/api/radar-farmaceutico/lista-interesse/${itemId}`);
+      await carregarListaInteresse();
+      return true;
     } catch (e) {
       console.error('Erro ao remover interesse:', e);
       return false;
@@ -84,7 +70,7 @@ export function useRadarFarmaceutico() {
   const executarScan = useCallback(async () => {
     setScanLoading(true);
     try {
-      await fetch(`${API_BASE}/api/radar-farmaceutico/scan`, { method: 'POST' });
+      await axios.post(`${API_BASE}/api/radar-farmaceutico/scan`);
       // Aguardar scan em background e recarregar
       setTimeout(async () => {
         await carregarDesabastecimento();
