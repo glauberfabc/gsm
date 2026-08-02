@@ -2,6 +2,8 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Login } from './components/Login';
 
 import ErrorBoundary from './components/common/ErrorBoundary';
 import Header from './components/layout/Header';
@@ -18,6 +20,7 @@ const AnvisaTab = lazy(() => import('./components/tabs/AnvisaTab').then(m => ({ 
 const SettingsTab = lazy(() => import('./components/tabs/SettingsTab').then(m => ({ default: m.SettingsTab })));
 const RadarLmrTab = lazy(() => import('./components/tabs/RadarLmrTab').then(m => ({ default: m.RadarLmrTab })));
 const RadarFarmaceuticoTab = lazy(() => import('./components/tabs/RadarFarmaceuticoTab').then(m => ({ default: m.RadarFarmaceuticoTab })));
+const UsersTab = lazy(() => import('./components/tabs/UsersTab').then(m => ({ default: m.UsersTab })));
 
 import { useSearch } from './hooks/useSearch';
 import { usePrecos } from './hooks/usePrecos';
@@ -41,6 +44,7 @@ const LazyFallback = (
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('search');
+  const { user, logout } = useAuth();
 
   const search = useSearch();
   const precos = usePrecos();
@@ -80,6 +84,8 @@ function AppContent() {
         setActiveTab={setActiveTab}
         onAnvisaLoad={anvisa.carregarAnvisa}
         notificacoes={notificacoesHook}
+        user={user}
+        onLogout={logout}
       />
 
       <main className="flex-grow max-w-7xl mx-auto w-full py-8 px-6">
@@ -182,6 +188,12 @@ function AppContent() {
           </Suspense>
         )}
 
+        {activeTab === 'usuarios' && (
+          <Suspense fallback={LazyFallback}>
+            <UsersTab />
+          </Suspense>
+        )}
+
         {/* Modal Esclarecimento */}
         <EsclarecimentoModal
           {...esclarecimento}
@@ -194,11 +206,31 @@ function AppContent() {
   );
 }
 
+function AuthGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <Loader2 className="animate-spin text-blue-500" size={48} />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
+  return <AppContent />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <AppContent />
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );

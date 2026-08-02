@@ -5,6 +5,7 @@ module.exports = {
     "./src/**/*.{js,jsx,ts,tsx}",
     "./public/index.html"
   ],
+  safelist: ["bg-slate-600"],
   theme: {
   	extend: {
   		borderRadius: {

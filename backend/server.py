@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query, File, UploadFile, Form, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, Query, File, UploadFile, Form, BackgroundTasks, Depends
 from fastapi.responses import StreamingResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -64,6 +64,10 @@ from services.data_enrichment_service import data_enrichment_service
 from scheduler import init_scheduler, shutdown_scheduler
 from services.sync_service import SyncService, init_sync_service
 from services.email_service import get_email_service
+from models.user import User
+from utils.security import get_current_user, require_super_admin
+from routers.auth_router import router as auth_router
+from routers.users_router import router as users_router
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -75,6 +79,7 @@ db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
 app = FastAPI(title="BEM - Buscador Estadual de Medicamentos")
+app.state.db = db
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -118,15 +123,14 @@ async def root():
 # ==================== ROTAS DE LISTAS CUSTOMIZADAS ====================
 
 @api_router.post("/listas", response_model=dict, status_code=201)
-async def criar_lista(lista: ListaMedicamentosCreate):
+async def criar_lista(lista: ListaMedicamentosCreate, current_user: User = Depends(get_current_user)):
     """
     Cria uma nova lista customizada de medicamentos
-    
+
     Limite: Máximo 5 listas por usuário
     """
     try:
-        # TODO: Quando implementar autenticação, usar user_id real
-        user_id = "default_user"
+        user_id = current_user.id
         
         # Verificar limite de 5 listas
         count = await db.listas_medicamentos.count_documents({"user_id": user_id})
@@ -181,13 +185,12 @@ async def criar_lista(lista: ListaMedicamentosCreate):
 
 
 @api_router.get("/listas", response_model=dict)
-async def listar_listas():
+async def listar_listas(current_user: User = Depends(get_current_user)):
     """
     Lista todas as listas customizadas do usuário
     """
     try:
-        # TODO: Quando implementar autenticação, usar user_id real
-        user_id = "default_user"
+        user_id = current_user.id
         
         listas = await db.listas_medicamentos.find(
             {"user_id": user_id},
@@ -6330,7 +6333,10 @@ async def extrair_itens_filtrado(
 
 
 # Include the router in the main app
-app.include_router(api_router)
+app.include_router(api_router, dependencies=[Depends(get_current_user)])
+
+app.include_router(auth_router)
+app.include_router(users_router, dependencies=[Depends(require_super_admin)])
 
 app.add_middleware(
     CORSMiddleware,
