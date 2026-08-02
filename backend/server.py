@@ -122,24 +122,22 @@ async def root():
 
 # ==================== ROTAS DE LISTAS CUSTOMIZADAS ====================
 
+def _verificar_dono_lista(lista: dict, current_user: User):
+    """
+    Super admin acessa qualquer lista; usuario normal so acessa as que ele mesmo criou.
+    """
+    if current_user.role != "super_admin" and lista.get("user_id") != current_user.id:
+        raise HTTPException(status_code=403, detail="Voce nao tem permissao para acessar esta lista")
+
+
 @api_router.post("/listas", response_model=dict, status_code=201)
 async def criar_lista(lista: ListaMedicamentosCreate, current_user: User = Depends(get_current_user)):
     """
     Cria uma nova lista customizada de medicamentos
-
-    Limite: Máximo 5 listas por usuário
     """
     try:
         user_id = current_user.id
-        
-        # Verificar limite de 5 listas
-        count = await db.listas_medicamentos.count_documents({"user_id": user_id})
-        if count >= 5:
-            raise HTTPException(
-                status_code=400, 
-                detail="Limite de 5 listas atingido. Delete uma lista existente para criar nova."
-            )
-        
+
         # Verificar se já existe lista com mesmo nome
         existing = await db.listas_medicamentos.find_one({
             "user_id": user_id,
@@ -187,30 +185,31 @@ async def criar_lista(lista: ListaMedicamentosCreate, current_user: User = Depen
 @api_router.get("/listas", response_model=dict)
 async def listar_listas(current_user: User = Depends(get_current_user)):
     """
-    Lista todas as listas customizadas do usuário
+    Lista as listas customizadas. Super admin ve as de todos os usuarios;
+    usuario normal ve apenas as que ele mesmo criou.
     """
     try:
-        user_id = current_user.id
-        
+        query = {} if current_user.role == "super_admin" else {"user_id": current_user.id}
+
         listas = await db.listas_medicamentos.find(
-            {"user_id": user_id},
+            query,
             {"_id": 0}
-        ).sort("created_at", -1).to_list(5)
-        
+        ).sort("created_at", -1).to_list(100)
+
         logger.info(f"Listando {len(listas)} listas")
-        
+
         return {
             "total": len(listas),
             "listas": listas
         }
-        
+
     except Exception as e:
         logger.error(f"Erro ao listar listas: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro ao listar listas: {str(e)}")
 
 
 @api_router.get("/listas/{lista_id}", response_model=dict)
-async def buscar_lista(lista_id: str):
+async def buscar_lista(lista_id: str, current_user: User = Depends(get_current_user)):
     """
     Busca uma lista específica por ID
     """
@@ -219,12 +218,14 @@ async def buscar_lista(lista_id: str):
             {"id": lista_id},
             {"_id": 0}
         )
-        
+
         if not lista:
             raise HTTPException(status_code=404, detail="Lista não encontrada")
-        
+
+        _verificar_dono_lista(lista, current_user)
+
         return {"lista": lista}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -233,7 +234,7 @@ async def buscar_lista(lista_id: str):
 
 
 @api_router.put("/listas/{lista_id}", response_model=dict)
-async def atualizar_lista(lista_id: str, lista_update: ListaMedicamentosUpdate):
+async def atualizar_lista(lista_id: str, lista_update: ListaMedicamentosUpdate, current_user: User = Depends(get_current_user)):
     """
     Atualiza uma lista existente
     """
@@ -242,19 +243,21 @@ async def atualizar_lista(lista_id: str, lista_update: ListaMedicamentosUpdate):
         lista_existente = await db.listas_medicamentos.find_one({"id": lista_id})
         if not lista_existente:
             raise HTTPException(status_code=404, detail="Lista não encontrada")
-        
+
+        _verificar_dono_lista(lista_existente, current_user)
+
         # Preparar dados para atualização
         update_data = {
-            k: v for k, v in lista_update.dict(exclude_unset=True).items() 
+            k: v for k, v in lista_update.dict(exclude_unset=True).items()
             if v is not None
         }
-        
+
         if not update_data:
             raise HTTPException(status_code=400, detail="Nenhum dado para atualizar")
-        
+
         # Se está mudando o nome, verificar duplicação
         if 'nome' in update_data:
-            user_id = lista_existente.get('user_id', 'default_user')
+            user_id = lista_existente.get('user_id')
             duplicata = await db.listas_medicamentos.find_one({
                 "user_id": user_id,
                 "nome": update_data['nome'],
@@ -265,32 +268,32 @@ async def atualizar_lista(lista_id: str, lista_update: ListaMedicamentosUpdate):
                     status_code=400,
                     detail=f"Já existe outra lista com o nome '{update_data['nome']}'"
                 )
-        
+
         # Adicionar timestamp de atualização
         update_data['updated_at'] = datetime.utcnow().isoformat()
-        
+
         # Atualizar no MongoDB
         result = await db.listas_medicamentos.update_one(
             {"id": lista_id},
             {"$set": update_data}
         )
-        
+
         if result.modified_count == 0:
             logger.warning(f"Lista {lista_id} não foi modificada")
-        
+
         # Buscar lista atualizada
         lista_atualizada = await db.listas_medicamentos.find_one(
             {"id": lista_id},
             {"_id": 0}
         )
-        
+
         logger.info(f"Lista atualizada: {lista_id}")
-        
+
         return {
             "message": "Lista atualizada com sucesso",
             "lista": lista_atualizada
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -299,23 +302,29 @@ async def atualizar_lista(lista_id: str, lista_update: ListaMedicamentosUpdate):
 
 
 @api_router.delete("/listas/{lista_id}", response_model=dict)
-async def deletar_lista(lista_id: str):
+async def deletar_lista(lista_id: str, current_user: User = Depends(get_current_user)):
     """
     Deleta uma lista customizada
     """
     try:
+        lista_existente = await db.listas_medicamentos.find_one({"id": lista_id})
+        if not lista_existente:
+            raise HTTPException(status_code=404, detail="Lista não encontrada")
+
+        _verificar_dono_lista(lista_existente, current_user)
+
         result = await db.listas_medicamentos.delete_one({"id": lista_id})
-        
+
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Lista não encontrada")
-        
+
         logger.info(f"Lista deletada: {lista_id}")
-        
+
         return {
             "message": "Lista deletada com sucesso",
             "lista_id": lista_id
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
