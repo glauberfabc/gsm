@@ -59,8 +59,8 @@ export function AnvisaTab({
       {anvisaBuscaLoading && (
         <div className="text-center py-10 bg-white rounded-2xl shadow border border-slate-100">
           <Loader2 size={36} className="animate-spin text-red-500 mx-auto mb-3"/>
-          <p className="text-slate-500 font-bold text-sm">Consultando DOU, CMED, PNCP, Noticias ANVISA, Descontinuacao...</p>
-          <p className="text-slate-400 text-xs mt-1">Buscando em 6 fontes oficiais simultaneamente</p>
+          <p className="text-slate-500 font-bold text-sm">Consultando DOU, CMED, PNCP, Noticias ANVISA, Descontinuacao, Registro ANVISA...</p>
+          <p className="text-slate-400 text-xs mt-1">Buscando em 7 fontes oficiais simultaneamente</p>
         </div>
       )}
 

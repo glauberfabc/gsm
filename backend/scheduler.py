@@ -888,7 +888,25 @@ def init_scheduler(db, notificacao_service, scraper_service=None, sync_service=N
             replace_existing=True,
             max_instances=1
         )
-        
+
+        # Job 10b: Registro ANVISA - dados abertos de medicamentos (1x/dia, o dataset muda pouco)
+        async def job_anvisa_registro():
+            try:
+                from services.anvisa_registro_service import sincronizar_registro_medicamentos
+                total = await sincronizar_registro_medicamentos(_db)
+                logger.info(f"ANVISA Registro (dados abertos): {total} registros nao-ativos sincronizados")
+            except Exception as e:
+                logger.error(f"ANVISA Registro (dados abertos) erro: {e}")
+
+        _scheduler.add_job(
+            job_anvisa_registro,
+            trigger=CronTrigger(hour=5, minute=30),
+            id="anvisa_registro_dados_abertos",
+            name="Registro ANVISA - Dados Abertos (situacao de registro)",
+            replace_existing=True,
+            max_instances=1
+        )
+
         # Job 11: Radar Farmacêutico v3.1 - Inteligência de Desabastecimento (a cada 12h)
         async def job_radar_farmaceutico_v31():
             try:
@@ -929,6 +947,7 @@ def init_scheduler(db, notificacao_service, scraper_service=None, sync_service=N
         logger.info("   8. 🛰️ v41: Radares 12H - às 08:00, 20:00")
         logger.info("   9. 🛰️ v41: Radares Diários - às 08:00")
         logger.info("  10. 💊 v78: Radar ANVISA - às 07:00, 19:00")
+        logger.info("  10b. 📋 Registro ANVISA (dados abertos) - às 05:30")
         logger.info("  11. 🛰️ v78: Radar Farmacêutico v3.1 - às 06:30, 18:30")
         logger.info("=" * 60)
         

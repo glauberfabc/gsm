@@ -27,6 +27,7 @@ Fontes:
 4. Notícias ANVISA
 5. PNCP - Indicadores de Mercado (Deserto/Fracassado/Dispensa)
 6. ANVISA Descontinuação
+7. Registro ANVISA - dados abertos (registros cancelados/inativos, indicador de mercado)
 """
 import re
 import json
@@ -128,6 +129,7 @@ class MedicamentoSearchService:
                 self._buscar_fonte("Notícias ANVISA", self._buscar_noticias_anvisa(session, termo)),
                 self._buscar_fonte("PNCP - Licitações Desertas/Fracassadas", self._buscar_pncp_deserto(session, termo)),
                 self._buscar_fonte("ANVISA - Descontinuação", self._buscar_descontinuacao(session, termo)),
+                self._buscar_fonte("Registro ANVISA (Cancelados/Inativos)", self._buscar_registro_cancelado(termo)),
             ]
             for nome, items, status in await asyncio.gather(*tasks):
                 resultados.extend(items)
@@ -573,6 +575,57 @@ class MedicamentoSearchService:
         except Exception as e:
             logger.error(f"ANVISA descontinuação search: {e}")
 
+        return resultados
+
+    # ===================== FONTE 7: REGISTRO ANVISA (DADOS ABERTOS) =====================
+    async def _buscar_registro_cancelado(self, termo: str) -> List[Dict]:
+        """
+        Busca registros de medicamentos cancelados/inativos/vencidos no dataset
+        aberto da ANVISA (sincronizado periodicamente por job, ver
+        services/anvisa_registro_service.py). Registro ativo não é indício de
+        nada, por isso a coleção só guarda os não-ativos.
+
+        Classificado como indicador de mercado (mesma categoria do PNCP), não
+        como prova legal - um registro cancelado não comprova sozinho que o
+        medicamento está em falta (pode haver outros produtos com o mesmo
+        princípio ativo ainda ativos no mercado).
+        """
+        partes = [p.strip() for p in termo.split('/') if p.strip()] if '/' in termo else []
+        termos_busca = [termo] + partes
+
+        or_conditions = []
+        for t in termos_busca:
+            r = re.compile(re.escape(t), re.IGNORECASE)
+            or_conditions.extend([
+                {"nome_produto": r},
+                {"principio_ativo": r},
+            ])
+
+        cursor = self.db.anvisa_registro_medicamentos.find(
+            {"$or": or_conditions}, {"_id": 0}
+        ).sort("data_finalizacao_processo", -1).limit(15)
+        docs = await cursor.to_list(length=15)
+
+        resultados = []
+        for d in docs:
+            situacao = d.get('situacao_registro', '')
+            nome = d.get('nome_produto', '')
+            empresa = d.get('empresa_detentora_registro', '')
+            resultados.append({
+                'titulo': f'Registro {situacao.upper()} - {nome}',
+                'descricao': (
+                    f"Princípio ativo: {d.get('principio_ativo', '')} | "
+                    f"Empresa: {empresa} | Situação: {situacao}"
+                )[:300],
+                'link': '',
+                'data_publicacao': d.get('data_finalizacao_processo', ''),
+                'fonte': 'ANVISA Registro',
+                'fonte_busca': 'Registro ANVISA (dados abertos)',
+                'tipo_alerta': 'indicador mercado',
+                'tipo_documento': 'Situação de registro',
+                'indicador_mercado': True,
+                'situacao_licitacao': f'REGISTRO {situacao.upper()}',
+            })
         return resultados
 
     # ===================== HELPERS =====================
