@@ -894,7 +894,7 @@ def init_scheduler(db, notificacao_service, scraper_service=None, sync_service=N
             try:
                 from services.anvisa_registro_service import sincronizar_registro_medicamentos
                 total = await sincronizar_registro_medicamentos(_db)
-                logger.info(f"ANVISA Registro (dados abertos): {total} registros nao-ativos sincronizados")
+                logger.info(f"ANVISA Registro (dados abertos): {total} registros sincronizados (ativos + nao-ativos)")
             except Exception as e:
                 logger.error(f"ANVISA Registro (dados abertos) erro: {e}")
 

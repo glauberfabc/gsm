@@ -37,21 +37,54 @@ class _FakeSession:
 
 
 class _FakeCollection:
-    def __init__(self):
+    def __init__(self, db=None, name=None):
+        self._db = db
+        self.name = name
         self.deleted = False
         self.inserted = []
 
     async def delete_many(self, *args, **kwargs):
         self.deleted = True
+        self.inserted = []
 
     async def insert_many(self, docs):
         self.inserted = list(docs)
 
+    async def rename(self, new_name, dropTarget=False):
+        # Simula a troca atomica: copia o conteudo desta colecao (temp)
+        # para a colecao de destino real no fake db.
+        target = self._db[new_name]
+        target.inserted = list(self.inserted)
+
+
+class _FakeCollectionInsertFails(_FakeCollection):
+    """Simula uma falha de rede/Mongo no meio do insert_many da colecao temp."""
+
+    async def insert_many(self, docs):
+        raise RuntimeError("insert_many falhou (simulado)")
+
 
 class _FakeDb:
     def __init__(self):
-        self.anvisa_registro_medicamentos = _FakeCollection()
-        self.anvisa_registro_medicamentos_ativos = _FakeCollection()
+        self._collections = {}
+
+    def __getitem__(self, name):
+        if name not in self._collections:
+            self._collections[name] = _FakeCollection(db=self, name=name)
+        return self._collections[name]
+
+    def __setitem__(self, name, collection):
+        collection._db = self
+        collection.name = name
+        self._collections[name] = collection
+
+    def __getattr__(self, name):
+        # Motor/pymongo expoe colecoes como atributos (db.minha_colecao);
+        # aqui delegamos para o mesmo dict usado por __getitem__ para que
+        # ambas as formas de acesso retornem a MESMA instancia.
+        if name.startswith('_'):
+            raise AttributeError(name)
+        return self[name]
 
 
 CSV_FAKE = (
@@ -79,3 +112,35 @@ def test_sincronizar_separa_ativos_e_inativos_em_colecoes_diferentes(monkeypatch
 
     assert len(db.anvisa_registro_medicamentos.inserted) == 1
     assert db.anvisa_registro_medicamentos.inserted[0]['nome_produto'] == 'Xolair'
+
+
+def test_falha_no_insert_many_da_colecao_temp_nao_apaga_dados_existentes(monkeypatch):
+    """Se o insert_many na colecao temp falhar no meio do sync (rede caiu,
+    Mongo com hiccup), a colecao REAL anvisa_registro_medicamentos_ativos
+    nao pode ficar vazia - ela deve manter o conteudo da sincronizacao
+    anterior ate a proxima tentativa bem-sucedida. E exatamente essa
+    propriedade que o swap via rename (em vez de delete_many+insert_many)
+    garante."""
+    monkeypatch.setattr(
+        anvisa_registro_service.aiohttp, "ClientSession",
+        lambda *a, **kw: _FakeSession(CSV_FAKE),
+    )
+    db = _FakeDb()
+
+    # Simula conteudo de uma sincronizacao anterior bem-sucedida.
+    conteudo_anterior = [{'nome_produto': 'Existente', 'situacao_registro': 'Ativo'}]
+    db.anvisa_registro_medicamentos_ativos.inserted = list(conteudo_anterior)
+
+    # Injeta uma colecao temp que falha no insert_many, simulando a queda
+    # de rede/Mongo no meio da sincronizacao dos registros ativos.
+    db['anvisa_registro_medicamentos_ativos__sync_tmp'] = _FakeCollectionInsertFails()
+
+    raised = False
+    try:
+        asyncio.run(anvisa_registro_service.sincronizar_registro_medicamentos(db))
+    except RuntimeError:
+        raised = True
+
+    assert raised, "esperava que a falha no insert_many propagasse"
+    # A colecao real nao deve ter sido apagada - continua com o conteudo anterior.
+    assert db.anvisa_registro_medicamentos_ativos.inserted == conteudo_anterior

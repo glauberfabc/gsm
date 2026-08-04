@@ -75,6 +75,19 @@ def _ssl_context_com_intermediario() -> ssl.SSLContext:
     return ctx
 
 
+async def _substituir_colecao(db, nome_colecao: str, docs: list):
+    """Substitui o conteudo de uma colecao de forma atomica: escreve os
+    docs novos numa colecao temporaria e troca via rename com
+    dropTarget=True (operacao atomica do MongoDB), em vez de
+    delete_many+insert_many (que deixa a colecao vazia se insert_many
+    falhar no meio)."""
+    nome_temp = f"{nome_colecao}__sync_tmp"
+    temp = db[nome_temp]
+    await temp.delete_many({})  # limpa resto de uma tentativa anterior que falhou
+    await temp.insert_many(docs)
+    await temp.rename(nome_colecao, dropTarget=True)
+
+
 async def sincronizar_registro_medicamentos(db) -> int:
     """Baixa o CSV aberto da ANVISA uma vez e atualiza DUAS colecoes:
     - anvisa_registro_medicamentos: so nao-ativos (cancelados/vencidos/
@@ -127,11 +140,9 @@ async def sincronizar_registro_medicamentos(db) -> int:
         return 0
 
     if docs_inativos:
-        await db.anvisa_registro_medicamentos.delete_many({})
-        await db.anvisa_registro_medicamentos.insert_many(docs_inativos)
+        await _substituir_colecao(db, 'anvisa_registro_medicamentos', docs_inativos)
     if docs_ativos:
-        await db.anvisa_registro_medicamentos_ativos.delete_many({})
-        await db.anvisa_registro_medicamentos_ativos.insert_many(docs_ativos)
+        await _substituir_colecao(db, 'anvisa_registro_medicamentos_ativos', docs_ativos)
 
     logger.info(
         f"ANVISA registro: {len(docs_inativos)} nao-ativos + {len(docs_ativos)} ativos sincronizados"
