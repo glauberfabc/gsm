@@ -251,6 +251,52 @@ class LmrService:
             'margem_farmacia': round(faixa['margem_farmacia'] * 100, 2),
         }
 
+    def _montar_resumo_regulatorio(self, classificacao: Dict, registros_ativos: List[Dict]) -> Dict:
+        """Monta o card 'Resumo Regulatorio e Viabilidade RDC 81/2008'."""
+        registrado = len(registros_ativos) > 0
+        laboratorios = sorted({
+            r['empresa_detentora_registro'] for r in registros_ativos
+            if r.get('empresa_detentora_registro')
+        })
+
+        desab_info = classificacao.get('desabastecimento_info')
+        if desab_info and desab_info.get('status'):
+            situacao_desabastecimento = desab_info['status']
+        elif classificacao.get('janela_aberta'):
+            situacao_desabastecimento = 'Indício de desabastecimento identificado (janela aberta)'
+        else:
+            situacao_desabastecimento = 'Sem indício de desabastecimento identificado'
+
+        if classificacao.get('via_judicial'):
+            viabilidade = 'VIÁVEL — importação amparada por ordem/decisão judicial'
+        elif classificacao.get('desabastecimento_detectado') or classificacao.get('janela_aberta'):
+            viabilidade = (
+                'VIÁVEL — desabastecimento oficial reconhecido autoriza '
+                'importação excepcional (RDC 81/2008)'
+            )
+        elif registrado:
+            viabilidade = (
+                'NÃO RECOMENDADA / INVIÁVEL por via administrativa ordinária — '
+                'há similar registrado e ativo no Brasil (RDC 81/2008), salvo '
+                'desabastecimento oficial ou ordem judicial'
+            )
+        else:
+            viabilidade = (
+                'SEM SIMILAR ATIVO IDENTIFICADO NA BASE ANVISA — avaliar '
+                'viabilidade caso a caso'
+            )
+
+        return {
+            'registrado_anvisa': registrado,
+            'laboratorios_referencia': laboratorios,
+            'situacao_desabastecimento': situacao_desabastecimento,
+            'viabilidade_importacao_rdc81': viabilidade,
+            'norma_referencia_viabilidade': (
+                'RDC 81/2008 (ANVISA) — Regulamento Técnico de Importação de '
+                'Produtos Sujeitos à Vigilância Sanitária'
+            ),
+        }
+
     def _calcular_margem(self, preco_ref: float, faixa: Dict, categoria: str) -> Dict:
         """Calcula margens de comercializacao"""
         margem_dist = faixa['margem_distribuidora']

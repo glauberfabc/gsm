@@ -54,3 +54,37 @@ class TestCalcularTributacaoCascata:
 
         assert trib['margem_distribuidora'] == 21.0
         assert trib['margem_farmacia'] == 33.5
+
+
+class TestMontarResumoRegulatorio:
+    def test_via_judicial_e_viavel(self):
+        classificacao = {'via_judicial': True, 'desabastecimento_detectado': False, 'janela_aberta': False, 'desabastecimento_info': None}
+        resumo = svc._montar_resumo_regulatorio(classificacao, registros_ativos=[])
+        assert resumo['viabilidade_importacao_rdc81'].startswith('VIÁVEL')
+
+    def test_desabastecimento_sem_judicial_e_viavel(self):
+        classificacao = {'via_judicial': False, 'desabastecimento_detectado': True, 'janela_aberta': True, 'desabastecimento_info': None}
+        resumo = svc._montar_resumo_regulatorio(classificacao, registros_ativos=[])
+        assert resumo['viabilidade_importacao_rdc81'].startswith('VIÁVEL')
+
+    def test_registrado_sem_desabastecimento_e_nao_recomendado(self):
+        classificacao = {'via_judicial': False, 'desabastecimento_detectado': False, 'janela_aberta': False, 'desabastecimento_info': None}
+        registros = [{'empresa_detentora_registro': 'GSK'}, {'empresa_detentora_registro': 'GSK'}]
+        resumo = svc._montar_resumo_regulatorio(classificacao, registros_ativos=registros)
+        assert resumo['registrado_anvisa'] is True
+        assert resumo['laboratorios_referencia'] == ['GSK']
+        assert resumo['viabilidade_importacao_rdc81'].startswith('NÃO RECOMENDADA')
+
+    def test_nada_encontrado_e_sem_similar_identificado(self):
+        classificacao = {'via_judicial': False, 'desabastecimento_detectado': False, 'janela_aberta': False, 'desabastecimento_info': None}
+        resumo = svc._montar_resumo_regulatorio(classificacao, registros_ativos=[])
+        assert resumo['registrado_anvisa'] is False
+        assert resumo['viabilidade_importacao_rdc81'].startswith('SEM SIMILAR ATIVO')
+
+    def test_situacao_desabastecimento_usa_status_do_desab_info_quando_disponivel(self):
+        classificacao = {
+            'via_judicial': False, 'desabastecimento_detectado': True, 'janela_aberta': True,
+            'desabastecimento_info': {'status': 'Confirmado pela ANVISA em 2026-01-10'},
+        }
+        resumo = svc._montar_resumo_regulatorio(classificacao, registros_ativos=[])
+        assert resumo['situacao_desabastecimento'] == 'Confirmado pela ANVISA em 2026-01-10'
