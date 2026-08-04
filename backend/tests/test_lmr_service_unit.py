@@ -56,6 +56,50 @@ class TestCalcularTributacaoCascata:
         assert trib['margem_farmacia'] == 33.5
 
 
+class TestOportunidadeScoreRegressaoCascata:
+    """
+    Pina o oportunidade_score por categoria a um preco_ref fixo, para que uma
+    futura mudanca nas aliquotas/despesas (hoje despesas_aduaneiras=0, pendente
+    de validacao) que faca carga_tributaria_total cruzar os limiares de score
+    (<20 / <30) quebre este teste em vez de mudar o score silenciosamente.
+    """
+    CLASSIFICACAO_NEUTRA = {
+        'categoria': None,  # setado por teste
+        'risco_comercial': 'medio',
+        'total_alertas': 0,
+        'janela_aberta': False,
+        'via_judicial': False,
+        'desabastecimento_detectado': False,
+    }
+
+    def _score_para(self, categoria):
+        classificacao = dict(self.CLASSIFICACAO_NEUTRA, categoria=categoria)
+        faixa = FAIXAS_MARGEM_IN428['sintetico']
+        trib = svc._calcular_tributacao(categoria, faixa, preco_ref=1000)
+        return svc._calcular_oportunidade_score(classificacao, trib)
+
+    def test_score_por_categoria_nao_muda_sem_intencao(self):
+        # Rode este teste, veja os valores reais impressos, e ajuste os
+        # numeros abaixo para bater com o comportamento atual (e nao com um
+        # numero adivinhado) antes de commitar.
+        resultados = {
+            categoria: self._score_para(categoria)
+            for categoria in ('excepcional', 'judicial', 'lista_positiva', 'lista_negativa')
+        }
+        print(resultados)  # referencia para conferencia manual
+        # Valores observados com a implementacao atual (cascata do Task 1):
+        # excepcional: carga~24.15% (<30) -> 30+5(carga)+5(risco medio) = 40
+        # judicial: carga~9.25% (<20) -> 30+15(carga)+5(risco medio) = 50
+        # lista_positiva: carga~28.70% (<30, perto do limiar) -> 30+5(carga)+5(risco medio) = 40
+        # lista_negativa: carga~42.99% (>=30) -> 30+0(carga)+5(risco medio) = 35
+        assert resultados == {
+            'excepcional': 40,
+            'judicial': 50,
+            'lista_positiva': 40,
+            'lista_negativa': 35,
+        }
+
+
 class TestMontarResumoRegulatorio:
     def test_via_judicial_e_viavel(self):
         classificacao = {'via_judicial': True, 'desabastecimento_detectado': False, 'janela_aberta': False, 'desabastecimento_info': None}
@@ -159,3 +203,20 @@ class TestAnalisarMedicamentoIncluiResumoRegulatorio:
 
         assert 'resumo_regulatorio_rdc81' in resultado
         assert resultado['resumo_regulatorio_rdc81']['registrado_anvisa'] is True
+
+    def test_resumo_regulatorio_viavel_quando_desabastecimento_detectado(self):
+        db = _FakeDb(
+            ativos=[{'nome_produto': 'Nucala', 'principio_ativo': 'MEPOLIZUMABE',
+                     'empresa_detentora_registro': 'GSK'}],
+            alertas=[],
+            desabastecimento=[{'score_boost': 95, 'status_anvisa': 'Confirmado',
+                                'categoria_terapeutica': 'Biologico', 'fonte_deteccao': 'ANVISA'}],
+        )
+        svc_local = LmrService(db)
+
+        resultado = asyncio.run(svc_local.analisar_medicamento('Mepolizumabe', preco_referencia=0, tipo_produto='sintetico'))
+
+        resumo = resultado['resumo_regulatorio_rdc81']
+        assert resumo['viabilidade_importacao_rdc81'].startswith('VIÁVEL')
+        # mesmo com registro ativo encontrado, desabastecimento oficial prevalece
+        assert resumo['registrado_anvisa'] is True
