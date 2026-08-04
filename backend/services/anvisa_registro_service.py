@@ -2,9 +2,11 @@
 Sincronizacao do dataset aberto de medicamentos registrados na ANVISA.
 Fonte oficial: https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv
 
-Guarda apenas registros com SITUACAO_REGISTRO != 'Ativo' (cancelados, inativos,
+Guarda registros com SITUACAO_REGISTRO != 'Ativo' (cancelados, inativos,
 vencidos etc.) na colecao anvisa_registro_medicamentos - um registro ativo nao
-e evidencia de desabastecimento, entao nao ha necessidade de guarda-lo.
+e evidencia de desabastecimento, entao a Janela ANVISA nao precisa dele.
+Registros ativos vao para a colecao separada anvisa_registro_medicamentos_ativos,
+usada pelo Radar LMR para checar similar registrado no Brasil (RDC 81/2008).
 
 O arquivo tem ~8MB/dezenas de milhares de linhas, entao e baixado e processado
 por um job agendado (nao a cada busca do usuario).
@@ -74,7 +76,13 @@ def _ssl_context_com_intermediario() -> ssl.SSLContext:
 
 
 async def sincronizar_registro_medicamentos(db) -> int:
-    """Baixa o CSV aberto da ANVISA e substitui o conteudo de anvisa_registro_medicamentos."""
+    """Baixa o CSV aberto da ANVISA uma vez e atualiza DUAS colecoes:
+    - anvisa_registro_medicamentos: so nao-ativos (cancelados/vencidos/
+      inativos) - inalterado, usado pela Janela ANVISA como indicador de
+      mercado.
+    - anvisa_registro_medicamentos_ativos: so ativos - usado pelo Radar
+      LMR para responder se ha similar registrado no Brasil (RDC 81/2008).
+    """
     timeout = aiohttp.ClientTimeout(total=120)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.get(CSV_URL, ssl=_ssl_context_com_intermediario()) as resp:
@@ -87,18 +95,16 @@ async def sincronizar_registro_medicamentos(db) -> int:
     reader = csv.DictReader(io.StringIO(text), delimiter=';')
 
     agora = datetime.now(timezone.utc).isoformat()
-    docs = []
+    docs_inativos = []
+    docs_ativos = []
     for row in reader:
         situacao = (row.get('SITUACAO_REGISTRO') or '').strip()
-        if not situacao or situacao.lower() == 'ativo':
-            continue
-
         nome = (row.get('NOME_PRODUTO') or '').strip()
         principio = (row.get('PRINCIPIO_ATIVO') or '').strip()
-        if not nome and not principio:
+        if not situacao or (not nome and not principio):
             continue
 
-        docs.append({
+        doc = {
             'nome_produto': nome,
             'principio_ativo': principio,
             'situacao_registro': situacao,
@@ -109,13 +115,25 @@ async def sincronizar_registro_medicamentos(db) -> int:
             'empresa_detentora_registro': (row.get('EMPRESA_DETENTORA_REGISTRO') or '').strip(),
             'numero_registro_produto': (row.get('NUMERO_REGISTRO_PRODUTO') or '').strip(),
             'atualizado_em': agora,
-        })
+        }
 
-    if not docs:
-        logger.warning("ANVISA registro: CSV nao retornou nenhuma linha nao-ativa, mantendo dados atuais")
+        if situacao.lower() == 'ativo':
+            docs_ativos.append(doc)
+        else:
+            docs_inativos.append(doc)
+
+    if not docs_inativos and not docs_ativos:
+        logger.warning("ANVISA registro: CSV nao retornou nenhuma linha valida, mantendo dados atuais")
         return 0
 
-    await db.anvisa_registro_medicamentos.delete_many({})
-    await db.anvisa_registro_medicamentos.insert_many(docs)
-    logger.info(f"ANVISA registro: {len(docs)} registros nao-ativos sincronizados")
-    return len(docs)
+    if docs_inativos:
+        await db.anvisa_registro_medicamentos.delete_many({})
+        await db.anvisa_registro_medicamentos.insert_many(docs_inativos)
+    if docs_ativos:
+        await db.anvisa_registro_medicamentos_ativos.delete_many({})
+        await db.anvisa_registro_medicamentos_ativos.insert_many(docs_ativos)
+
+    logger.info(
+        f"ANVISA registro: {len(docs_inativos)} nao-ativos + {len(docs_ativos)} ativos sincronizados"
+    )
+    return len(docs_inativos) + len(docs_ativos)
