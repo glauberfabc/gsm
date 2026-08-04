@@ -435,7 +435,7 @@ vira:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_lmr_service_unit.py -v`
-Expected: PASS (14 tests)
+Expected: PASS (13 tests)
 
 - [ ] **Step 5: Commit**
 
