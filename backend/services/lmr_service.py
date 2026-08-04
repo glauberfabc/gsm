@@ -88,6 +88,12 @@ class LmrService:
         classificacao = await self._classificar_lmr(medicamento)
         resultado['classificacao_lmr'] = classificacao
 
+        # 1b. Resumo regulatorio e viabilidade RDC 81/2008
+        registros_ativos = await self._verificar_registro_ativo(medicamento)
+        resultado['resumo_regulatorio_rdc81'] = self._montar_resumo_regulatorio(
+            classificacao, registros_ativos
+        )
+
         # 2. Calcular estrategia tributaria
         faixa = FAIXAS_MARGEM_IN428[tipo_efetivo]
         resultado['estrategia_tributaria'] = self._calcular_tributacao(
@@ -174,6 +180,22 @@ class LmrService:
                 'fonte': desab_match.get('fonte_deteccao', ''),
             } if desab_match else None,
         }
+
+    async def _verificar_registro_ativo(self, medicamento: str) -> List[Dict]:
+        """Retorna os registros ATIVOS da ANVISA que casam com o medicamento
+        buscado (usado para responder se ha similar registrado no Brasil,
+        conforme RDC 81/2008)."""
+        try:
+            docs = await self.db.anvisa_registro_medicamentos_ativos.find(
+                {'$or': [
+                    {'nome_produto': {'$regex': medicamento, '$options': 'i'}},
+                    {'principio_ativo': {'$regex': medicamento, '$options': 'i'}},
+                ]},
+                {'_id': 0},
+            ).to_list(length=20)
+        except Exception:
+            docs = []
+        return docs
 
     def _calcular_tributacao(self, categoria: str, faixa: Dict, preco_ref: float) -> Dict:
         """

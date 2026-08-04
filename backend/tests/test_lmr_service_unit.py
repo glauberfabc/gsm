@@ -88,3 +88,74 @@ class TestMontarResumoRegulatorio:
         }
         resumo = svc._montar_resumo_regulatorio(classificacao, registros_ativos=[])
         assert resumo['situacao_desabastecimento'] == 'Confirmado pela ANVISA em 2026-01-10'
+
+
+import asyncio
+
+
+class _FakeCursor:
+    def __init__(self, docs):
+        self._docs = docs
+
+    def to_list(self, length=None):
+        return self._to_list_async(length)
+
+    async def _to_list_async(self, length):
+        return list(self._docs)
+
+
+class _FakeCollection:
+    def __init__(self, docs):
+        self._docs = docs
+
+    def find(self, *args, **kwargs):
+        return _FakeCursor(self._docs)
+
+    def find_one(self, *args, **kwargs):
+        return self._find_one_async()
+
+    async def _find_one_async(self):
+        return self._docs[0] if self._docs else None
+
+
+class _FakeDb:
+    def __init__(self, ativos=None, alertas=None, desabastecimento=None):
+        self.anvisa_registro_medicamentos_ativos = _FakeCollection(ativos or [])
+        self.anvisa_alertas = _FakeCollection(alertas or [])
+        self.desabastecimento_inteligencia = _FakeCollection(desabastecimento or [])
+
+
+class TestVerificarRegistroAtivo:
+    def test_retorna_registros_que_casam_com_o_medicamento(self):
+        db = _FakeDb(ativos=[{'nome_produto': 'Nucala', 'principio_ativo': 'MEPOLIZUMABE',
+                               'empresa_detentora_registro': 'GSK'}])
+        svc_local = LmrService(db)
+
+        resultado = asyncio.run(svc_local._verificar_registro_ativo('Mepolizumabe'))
+
+        assert len(resultado) == 1
+        assert resultado[0]['empresa_detentora_registro'] == 'GSK'
+
+    def test_retorna_lista_vazia_quando_nao_encontrado(self):
+        db = _FakeDb(ativos=[])
+        svc_local = LmrService(db)
+
+        resultado = asyncio.run(svc_local._verificar_registro_ativo('Mepolizumabe'))
+
+        assert resultado == []
+
+
+class TestAnalisarMedicamentoIncluiResumoRegulatorio:
+    def test_resposta_inclui_resumo_regulatorio_rdc81(self):
+        db = _FakeDb(
+            ativos=[{'nome_produto': 'Nucala', 'principio_ativo': 'MEPOLIZUMABE',
+                     'empresa_detentora_registro': 'GSK'}],
+            alertas=[],
+            desabastecimento=[],
+        )
+        svc_local = LmrService(db)
+
+        resultado = asyncio.run(svc_local.analisar_medicamento('Mepolizumabe', preco_referencia=0, tipo_produto='sintetico'))
+
+        assert 'resumo_regulatorio_rdc81' in resultado
+        assert resultado['resumo_regulatorio_rdc81']['registrado_anvisa'] is True
