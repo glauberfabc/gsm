@@ -150,6 +150,22 @@ class TestLMRAnalysisEndpoint:
         
         print("✅ Response structure is correct")
 
+    def test_resposta_inclui_resumo_regulatorio_rdc81(self):
+        """POST /api/dama/lmr-analise-medicamento inclui o novo campo resumo_regulatorio_rdc81"""
+        response = requests.post(
+            f"{BASE_URL}/api/dama/lmr-analise-medicamento",
+            json={"medicamento": "TestResumoRegulatorio", "preco_referencia": 500, "tipo_produto": "sintetico"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "resumo_regulatorio_rdc81" in data
+        resumo = data["resumo_regulatorio_rdc81"]
+        for campo in ("registrado_anvisa", "laboratorios_referencia", "situacao_desabastecimento",
+                      "viabilidade_importacao_rdc81", "norma_referencia_viabilidade"):
+            assert campo in resumo, f"resumo_regulatorio_rdc81 sem campo {campo}"
+        print("✅ resumo_regulatorio_rdc81 presente e completo")
+
 
 class TestNotificationsEndpoint:
     """Test notifications/alerts endpoints"""
