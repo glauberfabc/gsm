@@ -112,7 +112,7 @@ export function RadarLmrTab({ oportunidades, loading, analiseDetalhe, analiseLoa
       <div className="bg-white rounded-2xl shadow-lg border-2 border-emerald-100 p-4" data-testid="lmr-busca-individual">
         <div className="flex items-center gap-2 mb-3">
           <Search size={18} className="text-emerald-500"/>
-          <span className="text-sm font-black text-slate-700 uppercase tracking-wide">Analise Individual LMR</span>
+          <span className="text-sm font-black text-slate-700 uppercase tracking-wide">Analise Individual do Medicamento e LMR</span>
           <span className="text-[10px] text-slate-400 font-medium ml-1">Consulte a estrategia tributaria de um medicamento</span>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -345,6 +345,11 @@ function AnaliseDetalheCard({ data, onClose }) {
           <p className="text-xs font-bold text-emerald-700 mt-1">{classif.beneficio_tributario}</p>
         </div>
 
+        {/* Resumo Regulatorio e RDC 81 */}
+        {data.resumo_regulatorio_rdc81 && (
+          <ResumoRegulatorioCard resumo={data.resumo_regulatorio_rdc81} />
+        )}
+
         {/* Tributacao */}
         <div>
           <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -407,6 +412,41 @@ function TributoBadge({ label, value, highlight }) {
     <div className={`rounded-lg px-3 py-2 border ${highlight ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
       <p className={`text-[10px] font-bold uppercase ${highlight ? 'text-red-400' : 'text-slate-400'}`}>{label}</p>
       <p className={`text-sm font-black ${highlight ? 'text-red-700' : 'text-slate-700'}`}>{value}</p>
+    </div>
+  );
+}
+
+
+function ResumoRegulatorioCard({ resumo }) {
+  const viavel = resumo.viabilidade_importacao_rdc81?.startsWith('VIÁVEL');
+  return (
+    <div className="bg-slate-50 border-2 border-slate-200 rounded-xl overflow-hidden" data-testid="resumo-regulatorio-rdc81">
+      <div className="bg-slate-700 px-4 py-2">
+        <p className="text-xs font-black text-white uppercase tracking-wide">
+          📋 Análise Regulatória e Viabilidade RDC 81/2008
+        </p>
+      </div>
+      <div className="p-4 space-y-3">
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase">1. Registro na ANVISA</p>
+          <p className="text-sm font-bold text-slate-700">
+            {resumo.registrado_anvisa ? 'SIM' : 'NÃO'}
+            {resumo.laboratorios_referencia?.length > 0 && (
+              <span className="font-normal text-slate-500"> — {resumo.laboratorios_referencia.join(', ')}</span>
+            )}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase">2. Situação de Falta / Desabastecimento</p>
+          <p className="text-sm font-semibold text-slate-700">{resumo.situacao_desabastecimento}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase">3. Viabilidade de Importação (RDC 81/2008)</p>
+          <p className={`text-sm font-bold ${viavel ? 'text-emerald-700' : 'text-red-700'}`}>
+            {resumo.viabilidade_importacao_rdc81}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
