@@ -176,36 +176,75 @@ class LmrService:
         }
 
     def _calcular_tributacao(self, categoria: str, faixa: Dict, preco_ref: float) -> Dict:
-        """Calcula a carga tributaria estimada"""
+        """
+        Calcula a carga tributaria em cascata (modelo padrao de importacao
+        brasileira):
+          - II incide sobre o valor aduaneiro (CIF = preco de referencia).
+          - PIS/COFINS-Importacao incidem sobre CIF + despesas aduaneiras.
+          - ICMS incide "por dentro" (embutido na propria base: Lei
+            Kandir, art. 13 par. 1 I), sobre CIF + II + PIS + COFINS +
+            despesas aduaneiras e nao-aduaneiras, com a aliquota de
+            destino (18% padrao SP, ou reduzida conforme categoria).
+        Despesas aduaneiras/nao-aduaneiras (capatazia, armazenagem,
+        SISCOMEX, despachante etc.) ainda nao tem valor de referencia
+        confirmado - ficam em 0 ate validacao contra a tabela oficial;
+        a formula ja esta pronta para recebe-las.
+        """
         if categoria == 'excepcional':
-            ii = 0.0
-            icms = ALIQUOTAS_TRIBUTARIAS['icms_reduzido']
+            aliquota_ii = 0.0
+            aliquota_icms = ALIQUOTAS_TRIBUTARIAS['icms_reduzido']
             beneficio_extra = 'Isencao II + ICMS reduzido (Art. 12, IN 428/2026)'
         elif categoria == 'judicial':
-            ii = 0.0
-            icms = 0.0
+            aliquota_ii = 0.0
+            aliquota_icms = 0.0
             beneficio_extra = 'Isencao total conforme liminar judicial'
         elif categoria == 'lista_positiva':
-            ii = ALIQUOTAS_TRIBUTARIAS['ii_medicamento'] * 0.5
-            icms = ALIQUOTAS_TRIBUTARIAS['icms_reduzido']
+            aliquota_ii = ALIQUOTAS_TRIBUTARIAS['ii_medicamento'] * 0.5
+            aliquota_icms = ALIQUOTAS_TRIBUTARIAS['icms_reduzido']
             beneficio_extra = 'Reducao II 50% + ICMS reduzido (LMR positiva)'
         else:
-            ii = ALIQUOTAS_TRIBUTARIAS['ii_medicamento']
-            icms = ALIQUOTAS_TRIBUTARIAS['icms_padrao']
+            aliquota_ii = ALIQUOTAS_TRIBUTARIAS['ii_medicamento']
+            aliquota_icms = ALIQUOTAS_TRIBUTARIAS['icms_padrao']
             beneficio_extra = 'Sem beneficio tributario especial'
 
-        pis = ALIQUOTAS_TRIBUTARIAS['pis']
-        cofins = ALIQUOTAS_TRIBUTARIAS['cofins']
-        carga_total = ii + icms + pis + cofins
+        aliquota_pis = ALIQUOTAS_TRIBUTARIAS['pis']
+        aliquota_cofins = ALIQUOTAS_TRIBUTARIAS['cofins']
+        despesas_aduaneiras = 0.0
+        despesas_nao_aduaneiras = 0.0
 
-        custo_importacao_estimado = preco_ref * (1 + carga_total) if preco_ref > 0 else 0
+        if preco_ref > 0:
+            cif = preco_ref
+            valor_ii = cif * aliquota_ii
+            base_pis_cofins = cif + despesas_aduaneiras
+            valor_pis = base_pis_cofins * aliquota_pis
+            valor_cofins = base_pis_cofins * aliquota_cofins
+
+            base_icms_sem_icms = (
+                cif + valor_ii + valor_pis + valor_cofins
+                + despesas_aduaneiras + despesas_nao_aduaneiras
+            )
+            if aliquota_icms > 0:
+                base_icms = base_icms_sem_icms / (1 - aliquota_icms)
+                valor_icms = base_icms * aliquota_icms
+            else:
+                valor_icms = 0.0
+
+            custo_importacao_estimado = base_icms_sem_icms + valor_icms
+            carga_tributaria_total = (
+                (valor_ii + valor_pis + valor_cofins + valor_icms) / cif * 100
+            )
+        else:
+            custo_importacao_estimado = 0
+            carga_tributaria_total = (
+                (aliquota_ii + aliquota_icms + aliquota_pis + aliquota_cofins) * 100
+            )
 
         return {
-            'imposto_importacao': round(ii * 100, 2),
-            'icms': round(icms * 100, 2),
-            'pis': round(pis * 100, 2),
-            'cofins': round(cofins * 100, 2),
-            'carga_tributaria_total': round(carga_total * 100, 2),
+            'imposto_importacao': round(aliquota_ii * 100, 2),
+            'icms': round(aliquota_icms * 100, 2),
+            'pis': round(aliquota_pis * 100, 2),
+            'cofins': round(aliquota_cofins * 100, 2),
+            'carga_tributaria_total': round(carga_tributaria_total, 2),
             'beneficio': beneficio_extra,
             'custo_importacao_estimado': round(custo_importacao_estimado, 2) if custo_importacao_estimado > 0 else None,
             'margem_distribuidora': round(faixa['margem_distribuidora'] * 100, 2),
