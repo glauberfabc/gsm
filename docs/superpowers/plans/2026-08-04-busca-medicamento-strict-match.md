@@ -489,7 +489,7 @@ def resultado_relevante(texto: str, queries: List[QueryEstruturada]) -> Optional
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_query_parser.py -v`
-Expected: PASS (28 tests)
+Expected: PASS (29 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -666,7 +666,7 @@ Substituir o método inteiro (linhas 339-363):
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_search_service_unit.py -v`
-Expected: PASS (4 tests). Também rode `pytest tests/test_medicamento_query_parser.py -v` para garantir que nada quebrou (28 tests, PASS).
+Expected: PASS (4 tests). Também rode `pytest tests/test_medicamento_query_parser.py -v` para garantir que nada quebrou (29 tests, PASS).
 
 - [ ] **Step 5: Commit**
 
