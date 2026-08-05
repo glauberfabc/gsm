@@ -204,7 +204,8 @@ REGRAS para "medicamento_detectado":
 Campos obrigatórios (JSON):
 1. "medicamento_detectado": UM único nome (máx 40 chars)
 2. "principio_ativo": princípio ativo/substância (máx 40 chars)
-3. "tipo_alerta": "importação excepcional" | "decisão judicial" | "desabastecimento" | "descontinuação" | "interrupção fabricação" | "recolhimento" | "proibição" | "regulamentação" | "informativo"
+3. "tipo_alerta": "importação excepcional" | "decisão judicial" | "desabastecimento" | "descontinuação" | "interrupção fabricação" | "recolhimento" | "proibição" | "regulamentação" | "laboratorio" | "informativo"
+   - Use "laboratorio" para: mudança de titularidade de registro, alteração pós-registro, atualização de bula ou alteração de rotulagem crítica por parte do laboratório detentor (quando NÃO envolve desabastecimento nem cancelamento de registro)
 4. "situacao": resumo curto (máx 20 palavras)
 5. "risco": "ALTO" | "MEDIO" | "BAIXO"
 6. "oportunidade": "Importação" | "Licitação provável" | "Demanda pública crítica" | "Monitorar"
@@ -328,6 +329,11 @@ Responda APENAS em JSON array puro."""
             is_interr = any(kw in texto for kw in ['interrupção', 'suspensão fabricação', 'parada produção'])
             is_desc = any(kw in texto for kw in ['descontinuação', 'descontinuado', 'cancelamento registro'])
             is_recolh = any(kw in texto for kw in ['recolhimento', 'recall', 'proíbe', 'proibição', 'interdição', 'apreensão'])
+            is_laboratorio = any(kw in texto for kw in [
+                'transferência de titularidade', 'alteração pós-registro',
+                'atualização de bula', 'alteração de rotulagem',
+                'mudança de titularidade',
+            ])
 
             if is_import:
                 tipo, sit, risco, oport = 'importação excepcional', 'importação excepcional autorizada', 'ALTO', 'Importação'
@@ -346,6 +352,9 @@ Responda APENAS em JSON array puro."""
                 janela, motivo = True, 'Descontinuação pode abrir janela de importação'
             elif is_recolh:
                 tipo, sit, risco, oport = 'recolhimento', 'recolhimento em curso', 'ALTO', 'Licitação provável'
+                janela, motivo = False, ''
+            elif is_laboratorio:
+                tipo, sit, risco, oport = 'laboratorio', 'alteração corporativa/regulatória de laboratório', 'BAIXO', 'Monitorar'
                 janela, motivo = False, ''
             else:
                 tipo, sit, risco, oport = 'informativo', alerta.get('palavra_chave', 'alerta'), 'BAIXO', 'Monitorar'
