@@ -244,6 +244,12 @@ class MedicamentoSearchService:
 
         return {
             "medicamento_buscado": termo,
+            # Campo informativo: reflete so a primeira parte de
+            # queries_estruturadas (relevante quando o termo tem nome
+            # composto com "/"). O matching real usa TODAS as partes (ver
+            # resultado_relevante em cada fonte) - este campo pode nao
+            # corresponder exatamente ao que casou com um resultado
+            # especifico quando o termo foi dividido.
             "search_query_parsed": {
                 "principio_ativo": queries_estruturadas[0]["principio_ativo"],
                 "concentracao": queries_estruturadas[0]["concentracao"],
