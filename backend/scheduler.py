@@ -870,20 +870,23 @@ def init_scheduler(db, notificacao_service, scraper_service=None, sync_service=N
             try:
                 from services.anvisa_scraper import AnvisaScraper
                 from services.desabastecimento_service import DesabastecimentoService
-                from services.notificacoes_regulatorias_service import criar_a_partir_de_alertas_anvisa
                 scraper = AnvisaScraper()
                 alertas = await scraper.coletar_tudo()
                 descont = await scraper.coletar_descontinuacao()
                 alertas.extend(descont)
                 svc = DesabastecimentoService(_db)
                 alertas_processados = await svc.processar_alertas(alertas)
-                notificacoes_criadas = await criar_a_partir_de_alertas_anvisa(_db, alertas_processados)
-                logger.info(
-                    f"ANVISA Radar: {len(alertas)} alertas coletados e processados, "
-                    f"{notificacoes_criadas} notificacao(oes) regulatoria(s) criada(s)"
-                )
+                logger.info(f"ANVISA Radar: {len(alertas)} alertas coletados e processados")
             except Exception as e:
                 logger.error(f"ANVISA Radar erro: {e}")
+                return
+
+            try:
+                from services.notificacoes_regulatorias_service import criar_a_partir_de_alertas_anvisa
+                notificacoes_criadas = await criar_a_partir_de_alertas_anvisa(_db, alertas_processados)
+                logger.info(f"ANVISA Radar: {notificacoes_criadas} notificacao(oes) regulatoria(s) criada(s)")
+            except Exception as e:
+                logger.error(f"ANVISA Radar: falha ao criar notificacoes regulatorias (alertas ja processados com sucesso): {e}")
         
         _scheduler.add_job(
             job_anvisa_radar,
