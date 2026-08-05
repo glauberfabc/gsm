@@ -282,7 +282,7 @@ async def criar_a_partir_de_novos_registros(db, novos_registros: List[Dict]) -> 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_notificacoes_regulatorias_service.py -v`
-Expected: PASS (8 tests)
+Expected: PASS (7 tests)
 
 - [ ] **Step 5: Commit**
 
