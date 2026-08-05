@@ -373,12 +373,10 @@ class MedicamentoSearchService:
         return resultados
 
     # ===================== FONTE 3: CMED DB =====================
-    async def _buscar_cmed_db(self, termo: str) -> List[Dict]:
-        partes = [p.strip() for p in termo.split('/') if p.strip()] if '/' in termo else []
-        termos_busca = [termo] + partes
+    async def _buscar_cmed_db(self, queries_estruturadas: List[QueryEstruturada]) -> List[Dict]:
         or_conditions = []
-        for t in termos_busca:
-            r = re.compile(re.escape(t), re.IGNORECASE)
+        for q in queries_estruturadas:
+            r = re.compile(re.escape(q['principio_ativo']), re.IGNORECASE)
             or_conditions.extend([
                 {"medicamento_detectado": r},
                 {"principio_ativo": r},
@@ -391,10 +389,21 @@ class MedicamentoSearchService:
             ]},
             {"_id": 0}
         ).limit(10)
-        results = await cursor.to_list(length=10)
-        for r in results:
+        candidatos = await cursor.to_list(length=10)
+
+        resultados = []
+        for r in candidatos:
+            texto = ' '.join(str(r.get(campo, '')) for campo in
+                              ('medicamento_detectado', 'principio_ativo', 'titulo'))
+            match = resultado_relevante(texto, queries_estruturadas)
+            if not match:
+                continue
             r['fonte_busca'] = 'CMED'
-        return results
+            r['concentracao_confirmada'] = (
+                contem_concentracao(texto, match['concentracao']) if match['concentracao'] else None
+            )
+            resultados.append(r)
+        return resultados
 
     # ===================== FONTE 4: NOTÍCIAS ANVISA =====================
     async def _buscar_noticias_anvisa(self, session, termo: str) -> List[Dict]:

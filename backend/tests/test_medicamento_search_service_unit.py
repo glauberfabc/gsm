@@ -96,3 +96,22 @@ class TestBuscarAlertasDb:
         results = asyncio.run(svc._buscar_alertas_db(queries))
 
         assert len(results) == 1
+
+
+class TestBuscarCmedDb:
+    def test_descarta_falso_positivo_por_substring(self):
+        docs = [
+            {"principio_ativo": "OMALIZUMABE", "titulo": "Risco Omalizumabe", "is_cmed": True},
+            {"principio_ativo": "MEPOLIZUMABE", "titulo": "Risco Mepolizumabe 100 MG/ML", "is_cmed": True},
+        ]
+        db = _FakeDb(anvisa_alertas=docs)
+        svc = MedicamentoSearchService(db)
+        queries = parse_termo_completo("Mepolizumabe 100 MG/ML")
+
+        results = asyncio.run(svc._buscar_cmed_db(queries))
+
+        titulos = [r["titulo"] for r in results]
+        assert "Risco Mepolizumabe 100 MG/ML" in titulos
+        assert "Risco Omalizumabe" not in titulos
+        assert results[0]["concentracao_confirmada"] is True
+        assert results[0]["fonte_busca"] == "CMED"
