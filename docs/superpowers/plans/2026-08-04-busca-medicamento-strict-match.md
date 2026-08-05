@@ -129,7 +129,7 @@ def contem_termo_estrito(texto: str, termo: str) -> bool:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_query_parser.py -v`
-Expected: PASS (9 tests)
+Expected: PASS (8 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -189,7 +189,7 @@ def contem_concentracao(texto: str, concentracao: str) -> bool:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_query_parser.py -v`
-Expected: PASS (12 tests)
+Expected: PASS (11 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -323,7 +323,7 @@ def parse_query(termo: str) -> QueryEstruturada:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_query_parser.py -v`
-Expected: PASS (18 tests)
+Expected: PASS (17 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -406,7 +406,7 @@ def parse_termo_completo(termo: str) -> List[QueryEstruturada]:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_query_parser.py -v`
-Expected: PASS (23 tests)
+Expected: PASS (22 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -476,7 +476,7 @@ def resultado_relevante(texto: str, queries: List[QueryEstruturada]) -> Optional
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_query_parser.py -v`
-Expected: PASS (26 tests)
+Expected: PASS (25 tests)
 
 - [ ] **Step 5: Commit**
 
