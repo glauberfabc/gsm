@@ -359,6 +359,14 @@ class TestDividirTermo:
     def test_barra_com_espacos_extras(self):
         assert dividir_termo("A /  B  / C") == ["A", "B", "C"]
 
+    def test_barra_grudada_de_concentracao_nao_divide(self):
+        # "100 MG/ML" tem barra sem espaço nos dois lados - é notação de
+        # concentração, não separador de nome composto. Se dividisse aqui,
+        # "ML" viraria uma segunda busca "fantasma" que bate em qualquer
+        # texto contendo a palavra "ml" (comuníssima em texto farmacêutico),
+        # o oposto do que este plano existe para resolver.
+        assert dividir_termo("Mepolizumabe 100 MG/ML") == ["Mepolizumabe 100 MG/ML"]
+
 
 class TestParseTermoCompleto:
     def test_termo_simples_gera_uma_query(self):
@@ -387,15 +395,20 @@ Append to `backend/services/medicamento_query_parser.py`:
 ```python
 def dividir_termo(termo: str) -> List[str]:
     """
-    Divide nomes compostos com '/' (ex.: 'Synvisc Classic 2ml / Hilano
-    G-F 20') em partes individuais, pois o banco pode ter armazenado
-    apenas uma das formas do nome. Sem '/', retorna o termo inteiro.
+    Divide nomes compostos com '/' cercada de espaço em pelo menos um
+    dos lados (ex.: 'Synvisc Classic 2ml / Hilano G-F 20') em partes
+    individuais, pois o banco pode ter armazenado apenas uma das
+    formas do nome.
+
+    Uma barra "grudada" nos dois lados (ex.: '100 MG/ML', '5G/GEL') é
+    tratada como parte de uma notação de concentração, não como
+    separador de nome composto - senão uma busca com concentração
+    composta quebraria em duas partes erradas (ex.: 'Mepolizumabe 100
+    MG/ML' viraria 'Mepolizumabe 100 MG' + 'ML', e essa segunda parte
+    bateria em qualquer texto contendo a palavra "ml").
     """
-    if '/' in termo:
-        partes = [p.strip() for p in termo.split('/') if p.strip()]
-        if partes:
-            return partes
-    return [termo]
+    partes = [p.strip() for p in re.split(r'(?<=\s)/|/(?=\s)', termo) if p.strip()]
+    return partes if len(partes) > 1 else [termo]
 
 
 def parse_termo_completo(termo: str) -> List[QueryEstruturada]:
@@ -406,7 +419,7 @@ def parse_termo_completo(termo: str) -> List[QueryEstruturada]:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_query_parser.py -v`
-Expected: PASS (22 tests)
+Expected: PASS (25 tests) — 19 da Task 3 (17 originais + 2 da correção de robustez) + 6 novos (4 em `TestDividirTermo`, 2 em `TestParseTermoCompleto`)
 
 - [ ] **Step 5: Commit**
 
@@ -476,7 +489,7 @@ def resultado_relevante(texto: str, queries: List[QueryEstruturada]) -> Optional
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_query_parser.py -v`
-Expected: PASS (25 tests)
+Expected: PASS (28 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -653,7 +666,7 @@ Substituir o método inteiro (linhas 339-363):
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_medicamento_search_service_unit.py -v`
-Expected: PASS (4 tests). Também rode `pytest tests/test_medicamento_query_parser.py -v` para garantir que nada quebrou (26 tests, PASS).
+Expected: PASS (4 tests). Também rode `pytest tests/test_medicamento_query_parser.py -v` para garantir que nada quebrou (28 tests, PASS).
 
 - [ ] **Step 5: Commit**
 
