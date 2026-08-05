@@ -244,6 +244,11 @@ class MedicamentoSearchService:
 
         return {
             "medicamento_buscado": termo,
+            "search_query_parsed": {
+                "principio_ativo": queries_estruturadas[0]["principio_ativo"],
+                "concentracao": queries_estruturadas[0]["concentracao"],
+                "forma_farmaceutica": queries_estruturadas[0]["forma_farmaceutica"],
+            },
             "resultados": processed,
             "total": len(processed),
             "fontes_consultadas": fontes,
@@ -859,6 +864,10 @@ class MedicamentoSearchService:
         4 = Indício normal
         5 = Rotina (SEMPRE rebaixado)
         6 = Obsoleto
+
+        Quando a busca informou concentração e o resultado não a confirma no
+        texto (`concentracao_confirmada is False`), soma-se +1 à prioridade
+        calculada (exceto para rotina/obsoleto, que já são o pior nível).
         """
         classificacao = item.get('classificacao_dama', 'indicio')
         parsed = item.get('_parsed_date')
@@ -873,25 +882,27 @@ class MedicamentoSearchService:
         if is_obsoleto:
             return 6
 
+        penalidade_concentracao = 1 if item.get('concentracao_confirmada') is False else 0
+
         # PNCP deserto/fracassado = indicador de mercado (prioridade alta, mas não máxima)
         if item.get('indicador_mercado'):
             situacao = item.get('situacao_licitacao', '').upper()
             if 'DESERTO' in situacao or 'FRACASSADO' in situacao:
-                return 1
-            return 2
+                return 1 + penalidade_concentracao
+            return 2 + penalidade_concentracao
 
         # Impacto confirmado
         if classificacao == 'impacto':
             if parsed:
                 days_ago = (now - parsed).days
                 if days_ago <= 90:
-                    return 1
-            return 2 if is_recente else 3
+                    return 1 + penalidade_concentracao
+            return (2 if is_recente else 3) + penalidade_concentracao
 
         # Indício
         if is_recente:
-            return 3
-        return 4
+            return 3 + penalidade_concentracao
+        return 4 + penalidade_concentracao
 
 
 _service = None
