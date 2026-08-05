@@ -39,6 +39,11 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List
 from bs4 import BeautifulSoup
 
+from services.medicamento_query_parser import (
+    QueryEstruturada, dividir_termo, parse_termo_completo,
+    contem_termo_estrito, contem_concentracao, resultado_relevante,
+)
+
 logger = logging.getLogger(__name__)
 
 # Keywords de prioridade dinâmica (impacto real)
@@ -336,16 +341,10 @@ class MedicamentoSearchService:
         return []
 
     # ===================== FONTE 2: DB ALERTAS =====================
-    async def _buscar_alertas_db(self, termo: str) -> List[Dict]:
-        # Para nomes compostos com "/" (ex: "Synvisc Classic 2ml / Hilano G-F 20"),
-        # busca cada parte individualmente além do nome completo, pois o banco pode
-        # ter armazenado apenas uma das formas do nome.
-        partes = [p.strip() for p in termo.split('/') if p.strip()] if '/' in termo else []
-        termos_busca = [termo] + partes
-
+    async def _buscar_alertas_db(self, queries_estruturadas: List[QueryEstruturada]) -> List[Dict]:
         or_conditions = []
-        for t in termos_busca:
-            r = re.compile(re.escape(t), re.IGNORECASE)
+        for q in queries_estruturadas:
+            r = re.compile(re.escape(q['principio_ativo']), re.IGNORECASE)
             or_conditions.extend([
                 {"medicamento_detectado": r},
                 {"principio_ativo": r},
@@ -357,10 +356,21 @@ class MedicamentoSearchService:
             {"$or": or_conditions},
             {"_id": 0}
         ).sort("coletado_em", -1).limit(20)
-        results = await cursor.to_list(length=20)
-        for r in results:
+        candidatos = await cursor.to_list(length=20)
+
+        resultados = []
+        for r in candidatos:
+            texto = ' '.join(str(r.get(campo, '')) for campo in
+                              ('medicamento_detectado', 'principio_ativo', 'titulo', 'medicamento'))
+            match = resultado_relevante(texto, queries_estruturadas)
+            if not match:
+                continue
             r['fonte_busca'] = 'Base GSM'
-        return results
+            r['concentracao_confirmada'] = (
+                contem_concentracao(texto, match['concentracao']) if match['concentracao'] else None
+            )
+            resultados.append(r)
+        return resultados
 
     # ===================== FONTE 3: CMED DB =====================
     async def _buscar_cmed_db(self, termo: str) -> List[Dict]:
