@@ -85,3 +85,15 @@ class TestParseQuery:
     def test_termo_original_preservado(self):
         q = parse_query("  Mepolizumabe 100 MG/ML  ")
         assert q["termo_original"] == "Mepolizumabe 100 MG/ML"
+
+    def test_concentracao_nao_vaza_para_forma_farmaceutica_adjacente(self):
+        q = parse_query("Aciclovir 5G/GEL")
+        assert q["concentracao"] == "5G"
+        assert q["forma_farmaceutica"] == "GEL"
+        assert q["principio_ativo"] == "Aciclovir"
+
+    def test_string_vazia_nao_quebra(self):
+        q = parse_query("")
+        assert q["principio_ativo"] == ""
+        assert q["concentracao"] is None
+        assert q["forma_farmaceutica"] is None

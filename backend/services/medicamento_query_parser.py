@@ -66,7 +66,7 @@ def contem_concentracao(texto: str, concentracao: str) -> bool:
 
 
 _REGEX_CONCENTRACAO_COMPOSTA = re.compile(
-    r'\d+[.,]?\d*\s*(?:MG|MCG|G|UI)\s*/\s*(?:ML|G|DOSE)'
+    r'\d+[.,]?\d*\s*(?:MG|MCG|G|UI)\s*/\s*(?:ML|G|DOSE)\b'
 )
 _REGEX_CONCENTRACAO_SIMPLES = re.compile(
     r'\d+[.,]?\d*\s*(?:MG|MCG|G|UI|ML)\b'
@@ -102,12 +102,13 @@ def parse_query(termo: str) -> QueryEstruturada:
 
     forma_farmaceutica = None
     span_forma = None
+    melhor_tamanho = -1
     for forma in FORMAS_FARMACEUTICAS:
         idx = busca.find(forma)
-        if idx != -1:
+        if idx != -1 and len(forma) > melhor_tamanho:
             span_forma = (idx, idx + len(forma))
             forma_farmaceutica = termo[idx:idx + len(forma)]
-            break
+            melhor_tamanho = len(forma)
 
     principio_ativo = termo
     spans = [s for s in (span_concentracao, span_forma) if s]
@@ -115,6 +116,12 @@ def parse_query(termo: str) -> QueryEstruturada:
     # spans anteriores (nenhum span se sobrepõe).
     for start, end in sorted(spans, key=lambda s: s[0], reverse=True):
         principio_ativo = principio_ativo[:start] + ' ' + principio_ativo[end:]
+    # '/' órfão pode sobrar entre a concentração e uma forma farmacêutica
+    # adjacente (ex.: "5G/GEL" -> concentração "5G" + forma "GEL" deixa o
+    # separador "/" solto no meio). A função nunca recebe '/' como parte
+    # legítima do princípio ativo (ver docstring), então é seguro tratá-lo
+    # como ruído de formatação da concentração aqui.
+    principio_ativo = re.sub(r'\s*/\s*', ' ', principio_ativo)
     principio_ativo = re.sub(r'\s+', ' ', principio_ativo).strip()
     if not principio_ativo:
         principio_ativo = termo
