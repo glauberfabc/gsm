@@ -120,21 +120,25 @@ class MedicamentoSearchService:
         if not termo:
             return {"resultados": [], "total": 0, "fontes_consultadas": []}
 
+        queries_estruturadas = parse_termo_completo(termo)
+
         resultados = []
         fontes = []
 
         async with aiohttp.ClientSession(timeout=self.timeout, headers=self.headers) as session:
-            # As 6 fontes são consultadas em paralelo via asyncio.gather() - cada uma
+            # As 7 fontes são consultadas em paralelo via asyncio.gather() - cada uma
             # com seu próprio try/except isolado, para que uma fonte lenta ou com erro
-            # não atrase nem derrube as demais.
+            # não atrase nem derrube as demais. Todas usam `queries_estruturadas` para
+            # exigir correspondência estrita por princípio ativo (ver
+            # medicamento_query_parser.py).
             tasks = [
-                self._buscar_fonte("DOU - Diário Oficial da União", self._buscar_dou(session, termo)),
-                self._buscar_fonte("Base de Alertas GSM", self._buscar_alertas_db(termo)),
-                self._buscar_fonte("CMED - Risco de Desabastecimento", self._buscar_cmed_db(termo)),
-                self._buscar_fonte("Notícias ANVISA", self._buscar_noticias_anvisa(session, termo)),
-                self._buscar_fonte("PNCP - Licitações Desertas/Fracassadas", self._buscar_pncp_deserto(session, termo)),
-                self._buscar_fonte("ANVISA - Descontinuação", self._buscar_descontinuacao(session, termo)),
-                self._buscar_fonte("Registro ANVISA (Cancelados/Inativos)", self._buscar_registro_cancelado(termo)),
+                self._buscar_fonte("DOU - Diário Oficial da União", self._buscar_dou(session, termo, queries_estruturadas)),
+                self._buscar_fonte("Base de Alertas GSM", self._buscar_alertas_db(queries_estruturadas)),
+                self._buscar_fonte("CMED - Risco de Desabastecimento", self._buscar_cmed_db(queries_estruturadas)),
+                self._buscar_fonte("Notícias ANVISA", self._buscar_noticias_anvisa(session, termo, queries_estruturadas)),
+                self._buscar_fonte("PNCP - Licitações Desertas/Fracassadas", self._buscar_pncp_deserto(session, termo, queries_estruturadas)),
+                self._buscar_fonte("ANVISA - Descontinuação", self._buscar_descontinuacao(session, termo, queries_estruturadas)),
+                self._buscar_fonte("Registro ANVISA (Cancelados/Inativos)", self._buscar_registro_cancelado(queries_estruturadas)),
             ]
             for nome, items, status in await asyncio.gather(*tasks):
                 resultados.extend(items)
