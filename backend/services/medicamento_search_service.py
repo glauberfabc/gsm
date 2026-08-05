@@ -254,20 +254,13 @@ class MedicamentoSearchService:
         }
 
     # ===================== FONTE 1: DOU =====================
-    async def _buscar_dou(self, session, termo: str) -> List[Dict]:
+    async def _buscar_dou(self, session, termo: str, queries_estruturadas: List[QueryEstruturada]) -> List[Dict]:
         """Busca no DOU com frases exatas estratégicas."""
         resultados = []
         queries = [
             termo,
             f'{termo} desabastecimento',
             f'{termo} dispensa de licitação',
-        ]
-
-        # Termos significativos (>3 chars) extraídos do nome para filtro de relevância.
-        # Evita aceitar resultados do DOU que batem apenas em tokens genéricos como "20" ou "G-F".
-        termos_sig = [
-            t.lower() for t in re.split(r'[\s/\-,;]+', termo)
-            if len(t) > 3
         ]
 
         for query in queries:
@@ -293,12 +286,12 @@ class MedicamentoSearchService:
                     abstract = re.sub(r'<[^>]+>', ' ', abstract_raw)
                     abstract = re.sub(r'\s+', ' ', abstract).strip()
 
-                    # Filtro de relevância: o título ou abstract deve conter ao menos
-                    # um termo significativo do medicamento buscado.
-                    if termos_sig:
-                        texto_item = (titulo + ' ' + abstract).lower()
-                        if not any(t in texto_item for t in termos_sig):
-                            continue
+                    # Filtro de relevância estrito: título+abstract precisa bater com
+                    # o princípio ativo de alguma das partes do termo buscado.
+                    texto_item = titulo + ' ' + abstract
+                    match = resultado_relevante(texto_item, queries_estruturadas)
+                    if not match:
+                        continue
 
                     href = item.get('urlTitle', '')
                     link = f"https://www.in.gov.br/web/dou/-/{href}" if href else ''
@@ -313,6 +306,9 @@ class MedicamentoSearchService:
                         'tipo_documento': item.get('artType', 'Publicação DOU'),
                         'secao': item.get('pubName', ''),
                         'tipo_alerta': self._detectar_tipo_alerta(titulo + ' ' + abstract),
+                        'concentracao_confirmada': (
+                            contem_concentracao(texto_item, match['concentracao']) if match['concentracao'] else None
+                        ),
                     })
             except Exception as e:
                 logger.error(f"DOU search error for '{query}': {e}")
