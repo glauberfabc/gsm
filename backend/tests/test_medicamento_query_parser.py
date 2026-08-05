@@ -34,3 +34,17 @@ class TestContemTermoEstrito:
     def test_ignora_palavras_curtas_do_termo(self):
         # "de" tem 2 letras e não entra na exigência de match
         assert contem_termo_estrito("Edital de Aciclovir", "Aciclovir de") is True
+
+
+from services.medicamento_query_parser import contem_concentracao
+
+
+class TestContemConcentracao:
+    def test_tolera_variacao_de_espaco(self):
+        assert contem_concentracao("Frasco 100mg/ml pronto uso", "100 MG/ML") is True
+
+    def test_tolera_espaco_ao_redor_da_barra(self):
+        assert contem_concentracao("Frasco 100 MG / ML pronto uso", "100 MG/ML") is True
+
+    def test_nao_bate_com_dose_diferente(self):
+        assert contem_concentracao("Frasco 50 MG/ML", "100 MG/ML") is False

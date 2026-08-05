@@ -52,3 +52,14 @@ def contem_termo_estrito(texto: str, termo: str) -> bool:
     if not palavras:
         return False
     return all(re.search(r'\b' + re.escape(p) + r'\b', texto_norm) for p in palavras)
+
+
+def contem_concentracao(texto: str, concentracao: str) -> bool:
+    """
+    Compara concentração tolerando variação de espaço em torno de
+    unidades (ex.: '100mg/ml' == '100 MG/ML' == '100 MG / ML').
+    """
+    def compactar(s: str) -> str:
+        return re.sub(r'\s+', '', normalizar(s))
+
+    return compactar(concentracao) in compactar(texto)
