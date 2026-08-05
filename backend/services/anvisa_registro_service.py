@@ -88,6 +88,22 @@ async def _substituir_colecao(db, nome_colecao: str, docs: list):
     await temp.rename(nome_colecao, dropTarget=True)
 
 
+async def _detectar_novos_registros(db, docs_ativos: list) -> list:
+    """Retorna os docs de docs_ativos cujo numero_registro_produto nao
+    estava na colecao anvisa_registro_medicamentos_ativos antes desta
+    sincronizacao (precisa ser chamado ANTES da troca atomica de
+    colecao, enquanto o snapshot antigo ainda esta live)."""
+    numeros_novos = {d['numero_registro_produto'] for d in docs_ativos if d.get('numero_registro_produto')}
+    if not numeros_novos:
+        return []
+    existentes = await db.anvisa_registro_medicamentos_ativos.find(
+        {'numero_registro_produto': {'$in': list(numeros_novos)}},
+        {'_id': 0, 'numero_registro_produto': 1},
+    ).to_list(length=len(numeros_novos))
+    numeros_existentes = {e['numero_registro_produto'] for e in existentes}
+    return [d for d in docs_ativos if d.get('numero_registro_produto') and d['numero_registro_produto'] not in numeros_existentes]
+
+
 async def sincronizar_registro_medicamentos(db) -> int:
     """Baixa o CSV aberto da ANVISA uma vez e atualiza DUAS colecoes:
     - anvisa_registro_medicamentos: so nao-ativos (cancelados/vencidos/
@@ -139,10 +155,17 @@ async def sincronizar_registro_medicamentos(db) -> int:
         logger.warning("ANVISA registro: CSV nao retornou nenhuma linha valida, mantendo dados atuais")
         return 0
 
+    novos_registros = await _detectar_novos_registros(db, docs_ativos) if docs_ativos else []
+
     if docs_inativos:
         await _substituir_colecao(db, 'anvisa_registro_medicamentos', docs_inativos)
     if docs_ativos:
         await _substituir_colecao(db, 'anvisa_registro_medicamentos_ativos', docs_ativos)
+
+    if novos_registros:
+        from services.notificacoes_regulatorias_service import criar_a_partir_de_novos_registros
+        criadas = await criar_a_partir_de_novos_registros(db, novos_registros)
+        logger.info(f"ANVISA registro: {criadas} notificacao(oes) de novo registro criada(s)")
 
     logger.info(
         f"ANVISA registro: {len(docs_inativos)} nao-ativos + {len(docs_ativos)} ativos sincronizados"

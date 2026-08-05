@@ -36,6 +36,14 @@ class _FakeSession:
         return False
 
 
+class _FakeCursor:
+    def __init__(self, docs):
+        self._docs = docs
+
+    async def to_list(self, length=None):
+        return list(self._docs)
+
+
 class _FakeCollection:
     def __init__(self, db=None, name=None):
         self._db = db
@@ -55,6 +63,24 @@ class _FakeCollection:
         # para a colecao de destino real no fake db.
         target = self._db[new_name]
         target.inserted = list(self.inserted)
+
+    def find(self, query=None, projection=None):
+        query = query or {}
+        docs = self.inserted
+        for campo, condicao in query.items():
+            if isinstance(condicao, dict) and '$in' in condicao:
+                valores = set(condicao['$in'])
+                docs = [d for d in docs if d.get(campo) in valores]
+            else:
+                docs = [d for d in docs if d.get(campo) == condicao]
+        return _FakeCursor(docs)
+
+    async def find_one(self, query):
+        docs = await self.find(query).to_list()
+        return docs[0] if docs else None
+
+    async def insert_one(self, doc):
+        self.inserted.append(doc)
 
 
 class _FakeCollectionInsertFails(_FakeCollection):
@@ -144,3 +170,66 @@ def test_falha_no_insert_many_da_colecao_temp_nao_apaga_dados_existentes(monkeyp
     assert raised, "esperava que a falha no insert_many propagasse"
     # A colecao real nao deve ter sido apagada - continua com o conteudo anterior.
     assert db.anvisa_registro_medicamentos_ativos.inserted == conteudo_anterior
+
+
+class TestDetectarNovosRegistros:
+    def test_retorna_apenas_registros_com_numero_novo(self):
+        db = _FakeDb()
+        db.anvisa_registro_medicamentos_ativos.inserted = [
+            {'numero_registro_produto': '111', 'nome_produto': 'Ja Existia'},
+        ]
+        docs_ativos = [
+            {'numero_registro_produto': '111', 'nome_produto': 'Ja Existia'},
+            {'numero_registro_produto': '222', 'nome_produto': 'Novo Registro'},
+        ]
+
+        novos = asyncio.run(anvisa_registro_service._detectar_novos_registros(db, docs_ativos))
+
+        assert len(novos) == 1
+        assert novos[0]['numero_registro_produto'] == '222'
+
+    def test_colecao_antiga_vazia_marca_tudo_como_novo(self):
+        db = _FakeDb()
+        docs_ativos = [
+            {'numero_registro_produto': '111', 'nome_produto': 'A'},
+            {'numero_registro_produto': '222', 'nome_produto': 'B'},
+        ]
+
+        novos = asyncio.run(anvisa_registro_service._detectar_novos_registros(db, docs_ativos))
+
+        assert len(novos) == 2
+
+    def test_lista_vazia_retorna_vazio(self):
+        db = _FakeDb()
+        novos = asyncio.run(anvisa_registro_service._detectar_novos_registros(db, []))
+        assert novos == []
+
+
+def test_sincronizar_cria_notificacao_para_registro_novo(monkeypatch):
+    monkeypatch.setattr(
+        anvisa_registro_service.aiohttp, "ClientSession",
+        lambda *a, **kw: _FakeSession(CSV_FAKE),
+    )
+    db = _FakeDb()
+    # "Nucala" (Ativo, no CSV_FAKE) e novo porque a colecao de ativos comeca
+    # vazia nesta primeira sincronizacao.
+    asyncio.run(anvisa_registro_service.sincronizar_registro_medicamentos(db))
+
+    notificacoes = db.notificacoes_regulatorias.inserted
+    assert len(notificacoes) == 1
+    assert notificacoes[0]['categoria'] == 'novo_registro'
+    assert 'Nucala' in notificacoes[0]['titulo']
+
+
+def test_sincronizar_nao_duplica_notificacao_em_segunda_execucao(monkeypatch):
+    monkeypatch.setattr(
+        anvisa_registro_service.aiohttp, "ClientSession",
+        lambda *a, **kw: _FakeSession(CSV_FAKE),
+    )
+    db = _FakeDb()
+
+    asyncio.run(anvisa_registro_service.sincronizar_registro_medicamentos(db))
+    asyncio.run(anvisa_registro_service.sincronizar_registro_medicamentos(db))
+
+    notificacoes = db.notificacoes_regulatorias.inserted
+    assert len(notificacoes) == 1
