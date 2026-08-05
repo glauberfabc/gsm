@@ -48,3 +48,40 @@ class TestContemConcentracao:
 
     def test_nao_bate_com_dose_diferente(self):
         assert contem_concentracao("Frasco 50 MG/ML", "100 MG/ML") is False
+
+
+from services.medicamento_query_parser import parse_query
+
+
+class TestParseQuery:
+    def test_extrai_principio_ativo_concentracao_e_forma(self):
+        q = parse_query("MEPOLIZUMABE 100 MG/ML CANETA APLICADORA")
+        assert q["principio_ativo"] == "MEPOLIZUMABE"
+        assert q["concentracao"] == "100 MG/ML"
+        assert q["forma_farmaceutica"] == "CANETA APLICADORA"
+
+    def test_extrai_concentracao_sem_forma(self):
+        q = parse_query("MEPOLIZUMABE 100 MG/ML")
+        assert q["principio_ativo"] == "MEPOLIZUMABE"
+        assert q["concentracao"] == "100 MG/ML"
+        assert q["forma_farmaceutica"] is None
+
+    def test_busca_so_com_nome_mantem_termo_inteiro(self):
+        q = parse_query("Mepolizumabe")
+        assert q["principio_ativo"] == "Mepolizumabe"
+        assert q["concentracao"] is None
+        assert q["forma_farmaceutica"] is None
+
+    def test_concentracao_simples_mg(self):
+        q = parse_query("Somatropina 4mg")
+        assert q["principio_ativo"] == "Somatropina"
+        assert q["concentracao"] == "4mg"
+
+    def test_forma_farmaceutica_com_acento_no_termo_original(self):
+        q = parse_query("Ocitocina 5 UI Pó Liofilizado")
+        assert q["principio_ativo"] == "Ocitocina"
+        assert q["forma_farmaceutica"] == "Pó Liofilizado"
+
+    def test_termo_original_preservado(self):
+        q = parse_query("  Mepolizumabe 100 MG/ML  ")
+        assert q["termo_original"] == "Mepolizumabe 100 MG/ML"

@@ -63,3 +63,65 @@ def contem_concentracao(texto: str, concentracao: str) -> bool:
         return re.sub(r'\s+', '', normalizar(s))
 
     return compactar(concentracao) in compactar(texto)
+
+
+_REGEX_CONCENTRACAO_COMPOSTA = re.compile(
+    r'\d+[.,]?\d*\s*(?:MG|MCG|G|UI)\s*/\s*(?:ML|G|DOSE)'
+)
+_REGEX_CONCENTRACAO_SIMPLES = re.compile(
+    r'\d+[.,]?\d*\s*(?:MG|MCG|G|UI|ML)\b'
+)
+
+FORMAS_FARMACEUTICAS = [
+    'CANETA APLICADORA', 'CANETA PRE-CHEIA', 'CANETA PRE CHEIA',
+    'SERINGA PREENCHIDA', 'FRASCO-AMPOLA', 'FRASCO AMPOLA',
+    'PO LIOFILIZADO', 'PO PARA SOLUCAO', 'SOLUCAO INJETAVEL',
+    'SUSPENSAO ORAL', 'COMPRIMIDO', 'CAPSULA', 'XAROPE',
+    'CREME', 'POMADA', 'GEL',
+]
+
+
+def parse_query(termo: str) -> QueryEstruturada:
+    """
+    Extrai princípio ativo / concentração / forma farmacêutica de uma
+    string livre. Nunca recebe '/' (a divisão de nomes compostos
+    acontece antes, em `dividir_termo`/`parse_termo_completo`).
+    """
+    termo = termo.strip()
+    # Busca em maiúsculas sem acento, com o MESMO comprimento do termo
+    # original (mapeamento 1:1), para os índices do regex/find valerem
+    # também para recortar `termo`.
+    busca = _remover_acentos(termo).upper()
+
+    concentracao = None
+    span_concentracao = None
+    m = _REGEX_CONCENTRACAO_COMPOSTA.search(busca) or _REGEX_CONCENTRACAO_SIMPLES.search(busca)
+    if m:
+        concentracao = termo[m.start():m.end()]
+        span_concentracao = (m.start(), m.end())
+
+    forma_farmaceutica = None
+    span_forma = None
+    for forma in FORMAS_FARMACEUTICAS:
+        idx = busca.find(forma)
+        if idx != -1:
+            span_forma = (idx, idx + len(forma))
+            forma_farmaceutica = termo[idx:idx + len(forma)]
+            break
+
+    principio_ativo = termo
+    spans = [s for s in (span_concentracao, span_forma) if s]
+    # Remove do fim para o começo para não invalidar os índices dos
+    # spans anteriores (nenhum span se sobrepõe).
+    for start, end in sorted(spans, key=lambda s: s[0], reverse=True):
+        principio_ativo = principio_ativo[:start] + ' ' + principio_ativo[end:]
+    principio_ativo = re.sub(r'\s+', ' ', principio_ativo).strip()
+    if not principio_ativo:
+        principio_ativo = termo
+
+    return QueryEstruturada(
+        termo_original=termo,
+        principio_ativo=principio_ativo,
+        concentracao=concentracao,
+        forma_farmaceutica=forma_farmaceutica,
+    )
