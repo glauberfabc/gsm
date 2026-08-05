@@ -53,6 +53,18 @@ class TestCriarAPartirDeAlertasAnvisa:
         assert categorias['Interdição V'] == 'cancelamento_suspensao'
         assert categorias['Titularidade U'] == 'laboratorio'
 
+    def test_dedup_dentro_da_mesma_chamada(self):
+        db = _FakeDb()
+        alertas = [
+            {'tipo_alerta': 'desabastecimento', 'titulo': 'Falta de X', 'link': 'https://a.gov.br/1'},
+            {'tipo_alerta': 'desabastecimento', 'titulo': 'Falta de X (variante)', 'link': 'https://a.gov.br/1'},
+        ]
+
+        criadas = asyncio.run(criar_a_partir_de_alertas_anvisa(db, alertas))
+
+        assert criadas == 1
+        assert len(db.notificacoes_regulatorias.docs) == 1
+
     def test_tipos_fora_de_escopo_nao_geram_notificacao(self):
         db = _FakeDb()
         alertas = [

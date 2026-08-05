@@ -37,7 +37,7 @@ async def criar_a_partir_de_alertas_anvisa(db, alertas_processados: List[Dict]) 
         if not categoria:
             continue
 
-        chave_dedup = alerta.get('link') or alerta.get('titulo', '')[:120]
+        chave_dedup = alerta.get('link') or (alerta.get('titulo') or '')[:120]
         if not chave_dedup:
             continue
 
