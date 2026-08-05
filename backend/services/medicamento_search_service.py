@@ -402,7 +402,7 @@ class MedicamentoSearchService:
         return resultados
 
     # ===================== FONTE 4: NOTÍCIAS ANVISA =====================
-    async def _buscar_noticias_anvisa(self, session, termo: str) -> List[Dict]:
+    async def _buscar_noticias_anvisa(self, session, termo: str, queries_estruturadas: List[QueryEstruturada]) -> List[Dict]:
         resultados = []
         encoded = urllib.parse.quote(termo)
         url = f'https://www.gov.br/anvisa/pt-br/assuntos/noticias-anvisa?SearchableText={encoded}'
@@ -418,7 +418,6 @@ class MedicamentoSearchService:
             if not lista:
                 return []
 
-            words = [w.lower() for w in termo.split() if len(w) >= 3]
             for li in lista.find_all('li', recursive=False)[:10]:
                 try:
                     conteudo = li.find('div', class_='conteudo')
@@ -449,8 +448,9 @@ class MedicamentoSearchService:
                             desc_text = desc_text[2:].strip()
                         descricao = desc_text
 
-                    full = (titulo + ' ' + descricao).lower()
-                    if words and not any(w in full for w in words):
+                    texto_item = titulo + ' ' + descricao
+                    match = resultado_relevante(texto_item, queries_estruturadas)
+                    if not match:
                         continue
 
                     resultados.append({
@@ -461,6 +461,9 @@ class MedicamentoSearchService:
                         'fonte': 'Notícias ANVISA',
                         'fonte_busca': 'Notícias ANVISA',
                         'tipo_alerta': self._detectar_tipo_alerta(titulo + ' ' + descricao),
+                        'concentracao_confirmada': (
+                            contem_concentracao(texto_item, match['concentracao']) if match['concentracao'] else None
+                        ),
                     })
                 except Exception:
                     continue
@@ -563,7 +566,7 @@ class MedicamentoSearchService:
         return resultados
 
     # ===================== FONTE 6: ANVISA DESCONTINUAÇÃO =====================
-    async def _buscar_descontinuacao(self, session, termo: str) -> List[Dict]:
+    async def _buscar_descontinuacao(self, session, termo: str, queries_estruturadas: List[QueryEstruturada]) -> List[Dict]:
         """Busca na página ANVISA de descontinuação de medicamentos."""
         resultados = []
         url = 'https://www.gov.br/anvisa/pt-br/assuntos/medicamentos/descontinuacao-de-medicamentos'
@@ -578,13 +581,10 @@ class MedicamentoSearchService:
             content = soup.find('div', id='content-core') or soup.find('article') or soup
             text = content.get_text(separator='\n', strip=True)
 
-            if termo.lower() in text.lower():
-                # Extract relevant paragraph
+            match = resultado_relevante(text, queries_estruturadas)
+            if match:
                 lines = text.split('\n')
-                relevant = []
-                for line in lines:
-                    if termo.lower() in line.lower():
-                        relevant.append(line.strip())
+                relevant = [ln.strip() for ln in lines if contem_termo_estrito(ln, match['principio_ativo'])]
 
                 if relevant:
                     resultados.append({
@@ -595,6 +595,9 @@ class MedicamentoSearchService:
                         'fonte_busca': 'ANVISA Descontinuação',
                         'tipo_alerta': 'descontinuação',
                         'risco': 'ALTO',
+                        'concentracao_confirmada': (
+                            contem_concentracao(text, match['concentracao']) if match['concentracao'] else None
+                        ),
                     })
         except Exception as e:
             logger.error(f"ANVISA descontinuação search: {e}")
