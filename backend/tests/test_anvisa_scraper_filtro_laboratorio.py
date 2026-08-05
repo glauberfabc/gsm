@@ -22,6 +22,7 @@ class TestFiltrarRelevantesLaboratorio:
         resultado = scraper._filtrar_relevantes(items)
 
         assert len(resultado) == 1
+        assert resultado[0]['is_laboratorio'] is True
 
     def test_item_sem_nenhum_gatilho_nao_passa(self):
         items = [{
@@ -45,3 +46,4 @@ class TestFiltrarRelevantesLaboratorio:
         resultado = scraper._filtrar_relevantes(items)
 
         assert len(resultado) == 1
+        assert resultado[0]['is_laboratorio'] is True

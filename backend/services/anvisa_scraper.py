@@ -54,11 +54,11 @@ KW_SAUDE = [
     'proibição', 'falsificação', 'farmacovigilância',
 ]
 KW_LABORATORIO = [
-    'transferência de titularidade', 'transferencia de titularidade',
-    'alteração pós-registro', 'alteracao pos-registro',
-    'atualização de bula', 'atualizacao de bula',
-    'alteração de rotulagem', 'alteracao de rotulagem',
-    'mudança de titularidade', 'mudanca de titularidade',
+    'transferência de titularidade',
+    'alteração pós-registro',
+    'atualização de bula',
+    'alteração de rotulagem',
+    'mudança de titularidade',
 ]
 
 # URLs das fontes
