@@ -470,7 +470,7 @@ class MedicamentoSearchService:
         return resultados
 
     # ===================== FONTE 5: PNCP DESERTO/FRACASSADO =====================
-    async def _buscar_pncp_deserto(self, session, termo: str) -> List[Dict]:
+    async def _buscar_pncp_deserto(self, session, termo: str, queries_estruturadas: List[QueryEstruturada]) -> List[Dict]:
         """
         Busca licitações no PNCP como INDICADORES DE MERCADO:
         - Contratação Direta / Dispensa / Deserto / Fracassado
@@ -492,19 +492,25 @@ class MedicamentoSearchService:
             for item in items[:30]:
                 title = item.get('title', '')
                 desc = item.get('description', '')
-                full = (title + ' ' + desc).lower()
+                full = title + ' ' + desc
                 created = item.get('createdAt', '')[:10]
 
-                # Verificar relevância do medicamento
-                if termo.lower()[:4] not in full:
+                # Verificar relevância estrita do princípio ativo (substitui o
+                # antigo `termo.lower()[:4] not in full`, que aceitava qualquer
+                # edital cujos 4 primeiros caracteres do termo aparecessem em
+                # qualquer lugar do texto).
+                match = resultado_relevante(full, queries_estruturadas)
+                if not match:
                     continue
 
+                full_lower = full.lower()
+
                 # Detect patterns indicating JANELA ABERTA
-                is_contratacao_direta = 'contratação direta' in full or 'contratacao direta' in full
-                is_dispensa = 'dispensa' in full
-                is_deserto = 'deserto' in full or 'desert' in full
-                is_fracassado = 'fracassado' in full or 'fracass' in full
-                is_emergencial = 'emergencial' in full or 'emergência' in full or 'emergencia' in full
+                is_contratacao_direta = 'contratação direta' in full_lower or 'contratacao direta' in full_lower
+                is_dispensa = 'dispensa' in full_lower
+                is_deserto = 'deserto' in full_lower or 'desert' in full_lower
+                is_fracassado = 'fracassado' in full_lower or 'fracass' in full_lower
+                is_emergencial = 'emergencial' in full_lower or 'emergência' in full_lower or 'emergencia' in full_lower
 
                 if not any([is_contratacao_direta, is_dispensa, is_deserto, is_fracassado, is_emergencial]):
                     continue
@@ -546,6 +552,9 @@ class MedicamentoSearchService:
                     'tipo_documento': f'Licitação {status_text}',
                     'indicador_mercado': True,
                     'situacao_licitacao': status_text,
+                    'concentracao_confirmada': (
+                        contem_concentracao(full, match['concentracao']) if match['concentracao'] else None
+                    ),
                 })
 
         except Exception as e:
