@@ -108,3 +108,33 @@ class TestRefactorInvariants:
         assert any("Deserta" in n or "Fracassada" in n for n in names), (
             f"PNCP Deserta/Fracassada source missing. Got: {names}"
         )
+
+
+@pytest.fixture(scope="module")
+def mepolizumabe_response():
+    r = requests.get(
+        f"{BASE_URL}/api/anvisa/buscar-medicamento",
+        params={"q": "Mepolizumabe 100 MG/ML"}, timeout=TIMEOUT,
+    )
+    assert r.status_code == 200, f"HTTP {r.status_code}: {r.text[:300]}"
+    return r.json()
+
+
+class TestSearchQueryParsed:
+    def test_search_query_parsed_field_exists(self, mepolizumabe_response):
+        assert "search_query_parsed" in mepolizumabe_response
+
+    def test_search_query_parsed_extrai_principio_ativo_e_concentracao(self, mepolizumabe_response):
+        parsed = mepolizumabe_response["search_query_parsed"]
+        assert parsed["principio_ativo"].strip().upper() == "MEPOLIZUMABE"
+        assert parsed["concentracao"] is not None
+
+    def test_resultados_tem_campo_concentracao_confirmada(self, mepolizumabe_response):
+        for r in mepolizumabe_response["resultados"]:
+            assert "concentracao_confirmada" in r
+            assert r["concentracao_confirmada"] in (True, False, None)
+
+    def test_omalizumabe_nao_aparece_em_busca_por_mepolizumabe(self, mepolizumabe_response):
+        for r in mepolizumabe_response["resultados"]:
+            texto = (r.get("titulo", "") + " " + r.get("descricao", "")).upper()
+            assert "OMALIZUMABE" not in texto or "MEPOLIZUMABE" in texto
