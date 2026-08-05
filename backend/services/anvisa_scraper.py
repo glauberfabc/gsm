@@ -53,6 +53,13 @@ KW_SAUDE = [
     'suplemento', 'recolhimento', 'recall', 'interdição',
     'proibição', 'falsificação', 'farmacovigilância',
 ]
+KW_LABORATORIO = [
+    'transferência de titularidade', 'transferencia de titularidade',
+    'alteração pós-registro', 'alteracao pos-registro',
+    'atualização de bula', 'atualizacao de bula',
+    'alteração de rotulagem', 'alteracao de rotulagem',
+    'mudança de titularidade', 'mudanca de titularidade',
+]
 
 # URLs das fontes
 URLS_NOTICIAS = [
@@ -432,10 +439,11 @@ class AnvisaScraper:
             is_judicial = any(kw in texto for kw in KW_JUDICIAL)
             is_desabastecimento = any(kw in texto for kw in KW_DESABASTECIMENTO)
             is_saude = any(kw in texto for kw in KW_SAUDE)
+            is_laboratorio = any(kw in texto for kw in KW_LABORATORIO)
             has_re = bool(item.get('numero_re'))
             has_tipo_doc = bool(item.get('tipo_documento'))
 
-            if not (is_importacao or is_judicial or is_desabastecimento or is_saude or has_re or has_tipo_doc):
+            if not (is_importacao or is_judicial or is_desabastecimento or is_saude or is_laboratorio or has_re or has_tipo_doc):
                 continue
 
             vistos.add(key)
@@ -456,6 +464,7 @@ class AnvisaScraper:
                 'is_importacao': is_importacao,
                 'is_judicial': is_judicial,
                 'is_desabastecimento': is_desabastecimento,
+                'is_laboratorio': is_laboratorio,
                 'palavra_chave': self._primeira_keyword(texto),
             })
 
@@ -463,7 +472,7 @@ class AnvisaScraper:
 
     @staticmethod
     def _primeira_keyword(texto: str) -> str:
-        for kw in KW_IMPORTACAO + KW_JUDICIAL + KW_DESABASTECIMENTO:
+        for kw in KW_IMPORTACAO + KW_JUDICIAL + KW_DESABASTECIMENTO + KW_LABORATORIO:
             if kw in texto:
                 return kw
         return ''
