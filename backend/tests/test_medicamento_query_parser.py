@@ -121,6 +121,10 @@ class TestDividirTermo:
         # o oposto do que este plano existe para resolver.
         assert dividir_termo("Mepolizumabe 100 MG/ML") == ["Mepolizumabe 100 MG/ML"]
 
+    def test_barra_com_espaco_de_um_lado_apenas(self):
+        assert dividir_termo("Synvisc Classic 2ml/ Hilano G-F 20") == ["Synvisc Classic 2ml", "Hilano G-F 20"]
+        assert dividir_termo("Synvisc Classic 2ml /Hilano G-F 20") == ["Synvisc Classic 2ml", "Hilano G-F 20"]
+
 
 class TestParseTermoCompleto:
     def test_termo_simples_gera_uma_query(self):
