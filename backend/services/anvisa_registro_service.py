@@ -155,7 +155,12 @@ async def sincronizar_registro_medicamentos(db) -> int:
         logger.warning("ANVISA registro: CSV nao retornou nenhuma linha valida, mantendo dados atuais")
         return 0
 
-    novos_registros = await _detectar_novos_registros(db, docs_ativos) if docs_ativos else []
+    novos_registros = []
+    if docs_ativos:
+        try:
+            novos_registros = await _detectar_novos_registros(db, docs_ativos)
+        except Exception as e:
+            logger.error(f"ANVISA registro: falha ao detectar novos registros, sincronizacao continua: {e}")
 
     if docs_inativos:
         await _substituir_colecao(db, 'anvisa_registro_medicamentos', docs_inativos)
@@ -163,9 +168,12 @@ async def sincronizar_registro_medicamentos(db) -> int:
         await _substituir_colecao(db, 'anvisa_registro_medicamentos_ativos', docs_ativos)
 
     if novos_registros:
-        from services.notificacoes_regulatorias_service import criar_a_partir_de_novos_registros
-        criadas = await criar_a_partir_de_novos_registros(db, novos_registros)
-        logger.info(f"ANVISA registro: {criadas} notificacao(oes) de novo registro criada(s)")
+        try:
+            from services.notificacoes_regulatorias_service import criar_a_partir_de_novos_registros
+            criadas = await criar_a_partir_de_novos_registros(db, novos_registros)
+            logger.info(f"ANVISA registro: {criadas} notificacao(oes) de novo registro criada(s)")
+        except Exception as e:
+            logger.error(f"ANVISA registro: falha ao criar notificacoes de novo registro (sincronizacao ja concluida): {e}")
 
     logger.info(
         f"ANVISA registro: {len(docs_inativos)} nao-ativos + {len(docs_ativos)} ativos sincronizados"

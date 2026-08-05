@@ -233,3 +233,25 @@ def test_sincronizar_nao_duplica_notificacao_em_segunda_execucao(monkeypatch):
 
     notificacoes = db.notificacoes_regulatorias.inserted
     assert len(notificacoes) == 1
+
+
+def test_falha_na_deteccao_de_novos_registros_nao_impede_sincronizacao(monkeypatch):
+    monkeypatch.setattr(
+        anvisa_registro_service.aiohttp, "ClientSession",
+        lambda *a, **kw: _FakeSession(CSV_FAKE),
+    )
+    db = _FakeDb()
+
+    async def _find_com_falha(*args, **kwargs):
+        raise RuntimeError("falha simulada na consulta de deteccao")
+    db.anvisa_registro_medicamentos_ativos.find = _find_com_falha
+
+    total = asyncio.run(anvisa_registro_service.sincronizar_registro_medicamentos(db))
+
+    # A sincronizacao principal (swap das duas colecoes) precisa ter
+    # completado normalmente, mesmo com a deteccao de novos registros falhando.
+    assert total == 2
+    assert len(db.anvisa_registro_medicamentos_ativos.inserted) == 1
+    assert len(db.anvisa_registro_medicamentos.inserted) == 1
+    # Sem notificacao, ja que a deteccao falhou.
+    assert db.notificacoes_regulatorias.inserted == []
