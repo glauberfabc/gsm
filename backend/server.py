@@ -1047,6 +1047,49 @@ async def buscar_alerta_oportunidade(alerta_id: str):
 
 
 
+# ==================== NOTIFICACOES REGULATORIAS (SINO - JANELA ANVISA) ====================
+
+@api_router.get("/notificacoes/regulatorias")
+async def listar_notificacoes_regulatorias(limite: int = Query(15, ge=1, le=50)):
+    """
+    Lista notificacoes regulatorias (sino do modulo Janela ANVISA):
+    desabastecimento, cancelamento/suspensao (RE), novo registro,
+    noticias de laboratorio. Ordenadas da mais recente para a mais
+    antiga.
+    """
+    try:
+        notificacoes = await db.notificacoes_regulatorias.find(
+            {}, {"_id": 0}
+        ).sort("criado_em", -1).to_list(length=limite)
+        nao_lidas = sum(1 for n in notificacoes if not n.get('lida'))
+        return {
+            "alertas": notificacoes,
+            "total": len(notificacoes),
+            "nao_lidas": nao_lidas,
+        }
+    except Exception as e:
+        logger.error(f"Erro ao listar notificacoes regulatorias: {e}")
+        return {"alertas": [], "total": 0, "nao_lidas": 0}
+
+
+@api_router.post("/notificacoes/regulatorias/{notificacao_id}/lida")
+async def marcar_notificacao_regulatoria_lida(notificacao_id: str):
+    """Marca uma notificacao regulatoria como lida."""
+    try:
+        result = await db.notificacoes_regulatorias.update_one(
+            {"id": notificacao_id},
+            {"$set": {"lida": True}}
+        )
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Notificacao nao encontrada")
+        return {"message": "Notificacao marcada como lida", "id": notificacao_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao marcar notificacao regulatoria: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== ROTAS LOCAL-FIRST (P0) ====================
 
 @api_router.get("/search/local")
