@@ -97,3 +97,41 @@ class TestParseQuery:
         assert q["principio_ativo"] == ""
         assert q["concentracao"] is None
         assert q["forma_farmaceutica"] is None
+
+
+from services.medicamento_query_parser import dividir_termo, parse_termo_completo
+
+
+class TestDividirTermo:
+    def test_sem_barra_retorna_termo_unico(self):
+        assert dividir_termo("Mepolizumabe") == ["Mepolizumabe"]
+
+    def test_com_barra_divide_em_partes(self):
+        partes = dividir_termo("Synvisc Classic 2ml / Hilano G-F 20")
+        assert partes == ["Synvisc Classic 2ml", "Hilano G-F 20"]
+
+    def test_barra_com_espacos_extras(self):
+        assert dividir_termo("A /  B  / C") == ["A", "B", "C"]
+
+    def test_barra_grudada_de_concentracao_nao_divide(self):
+        # "100 MG/ML" tem barra sem espaço nos dois lados - é notação de
+        # concentração, não separador de nome composto. Se dividisse aqui,
+        # "ML" viraria uma segunda busca "fantasma" que bate em qualquer
+        # texto contendo a palavra "ml" (comuníssima em texto farmacêutico),
+        # o oposto do que este plano existe para resolver.
+        assert dividir_termo("Mepolizumabe 100 MG/ML") == ["Mepolizumabe 100 MG/ML"]
+
+
+class TestParseTermoCompleto:
+    def test_termo_simples_gera_uma_query(self):
+        queries = parse_termo_completo("Mepolizumabe 100 MG/ML")
+        assert len(queries) == 1
+        assert queries[0]["principio_ativo"] == "Mepolizumabe"
+
+    def test_nome_composto_gera_duas_queries(self):
+        queries = parse_termo_completo("Synvisc Classic 2ml / Hilano G-F 20")
+        assert len(queries) == 2
+        assert queries[0]["principio_ativo"] == "Synvisc Classic"
+        assert queries[0]["concentracao"] == "2ml"
+        assert queries[1]["principio_ativo"] == "Hilano G-F 20"
+        assert queries[1]["concentracao"] is None

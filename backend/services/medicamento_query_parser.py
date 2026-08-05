@@ -132,3 +132,26 @@ def parse_query(termo: str) -> QueryEstruturada:
         concentracao=concentracao,
         forma_farmaceutica=forma_farmaceutica,
     )
+
+
+def dividir_termo(termo: str) -> List[str]:
+    """
+    Divide nomes compostos com '/' cercada de espaço em pelo menos um
+    dos lados (ex.: 'Synvisc Classic 2ml / Hilano G-F 20') em partes
+    individuais, pois o banco pode ter armazenado apenas uma das
+    formas do nome.
+
+    Uma barra "grudada" nos dois lados (ex.: '100 MG/ML', '5G/GEL') é
+    tratada como parte de uma notação de concentração, não como
+    separador de nome composto - senão uma busca com concentração
+    composta quebraria em duas partes erradas (ex.: 'Mepolizumabe 100
+    MG/ML' viraria 'Mepolizumabe 100 MG' + 'ML', e essa segunda parte
+    bateria em qualquer texto contendo a palavra "ml").
+    """
+    partes = [p.strip() for p in re.split(r'(?<=\s)/|/(?=\s)', termo) if p.strip()]
+    return partes if len(partes) > 1 else [termo]
+
+
+def parse_termo_completo(termo: str) -> List[QueryEstruturada]:
+    """Aplica `parse_query` a cada parte de `dividir_termo(termo)`."""
+    return [parse_query(parte) for parte in dividir_termo(termo)]
