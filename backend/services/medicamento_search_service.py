@@ -597,7 +597,7 @@ class MedicamentoSearchService:
         return resultados
 
     # ===================== FONTE 7: REGISTRO ANVISA (DADOS ABERTOS) =====================
-    async def _buscar_registro_cancelado(self, termo: str) -> List[Dict]:
+    async def _buscar_registro_cancelado(self, queries_estruturadas: List[QueryEstruturada]) -> List[Dict]:
         """
         Busca registros de medicamentos cancelados/inativos/vencidos no dataset
         aberto da ANVISA (sincronizado periodicamente por job, ver
@@ -609,12 +609,9 @@ class MedicamentoSearchService:
         medicamento está em falta (pode haver outros produtos com o mesmo
         princípio ativo ainda ativos no mercado).
         """
-        partes = [p.strip() for p in termo.split('/') if p.strip()] if '/' in termo else []
-        termos_busca = [termo] + partes
-
         or_conditions = []
-        for t in termos_busca:
-            r = re.compile(re.escape(t), re.IGNORECASE)
+        for q in queries_estruturadas:
+            r = re.compile(re.escape(q['principio_ativo']), re.IGNORECASE)
             or_conditions.extend([
                 {"nome_produto": r},
                 {"principio_ativo": r},
@@ -623,10 +620,15 @@ class MedicamentoSearchService:
         cursor = self.db.anvisa_registro_medicamentos.find(
             {"$or": or_conditions}, {"_id": 0}
         ).sort("data_finalizacao_processo", -1).limit(15)
-        docs = await cursor.to_list(length=15)
+        candidatos = await cursor.to_list(length=15)
 
         resultados = []
-        for d in docs:
+        for d in candidatos:
+            texto = f"{d.get('nome_produto', '')} {d.get('principio_ativo', '')}"
+            match = resultado_relevante(texto, queries_estruturadas)
+            if not match:
+                continue
+
             situacao = d.get('situacao_registro', '')
             nome = d.get('nome_produto', '')
             empresa = d.get('empresa_detentora_registro', '')
@@ -644,6 +646,9 @@ class MedicamentoSearchService:
                 'tipo_documento': 'Situação de registro',
                 'indicador_mercado': True,
                 'situacao_licitacao': f'REGISTRO {situacao.upper()}',
+                'concentracao_confirmada': (
+                    contem_concentracao(texto, match['concentracao']) if match['concentracao'] else None
+                ),
             })
         return resultados
 

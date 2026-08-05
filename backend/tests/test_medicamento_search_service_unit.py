@@ -115,3 +115,23 @@ class TestBuscarCmedDb:
         assert "Risco Omalizumabe" not in titulos
         assert results[0]["concentracao_confirmada"] is True
         assert results[0]["fonte_busca"] == "CMED"
+
+
+class TestBuscarRegistroCancelado:
+    def test_descarta_falso_positivo_por_substring(self):
+        docs = [
+            {"nome_produto": "Xolair", "principio_ativo": "OMALIZUMABE",
+             "situacao_registro": "cancelado", "empresa_detentora_registro": "Lab A",
+             "data_finalizacao_processo": "2025-01-01"},
+            {"nome_produto": "Nucala", "principio_ativo": "MEPOLIZUMABE",
+             "situacao_registro": "cancelado", "empresa_detentora_registro": "Lab B",
+             "data_finalizacao_processo": "2025-02-01"},
+        ]
+        db = _FakeDb(anvisa_registro_medicamentos=docs)
+        svc = MedicamentoSearchService(db)
+        queries = parse_termo_completo("Mepolizumabe")
+
+        results = asyncio.run(svc._buscar_registro_cancelado(queries))
+
+        assert len(results) == 1
+        assert "Nucala" in results[0]["titulo"]
