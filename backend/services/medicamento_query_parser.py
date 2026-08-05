@@ -155,3 +155,17 @@ def dividir_termo(termo: str) -> List[str]:
 def parse_termo_completo(termo: str) -> List[QueryEstruturada]:
     """Aplica `parse_query` a cada parte de `dividir_termo(termo)`."""
     return [parse_query(parte) for parte in dividir_termo(termo)]
+
+
+def resultado_relevante(texto: str, queries: List[QueryEstruturada]) -> Optional[QueryEstruturada]:
+    """
+    Retorna a primeira `QueryEstruturada` cujo `principio_ativo` bate em
+    `texto` (via `contem_termo_estrito`), ou None se nenhuma bater.
+    Usado pelas 7 fontes de `medicamento_search_service.py` para decidir
+    se um resultado é relevante e, em caso positivo, qual concentração
+    verificar.
+    """
+    for q in queries:
+        if contem_termo_estrito(texto, q['principio_ativo']):
+            return q
+    return None

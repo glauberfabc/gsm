@@ -139,3 +139,24 @@ class TestParseTermoCompleto:
         assert queries[0]["concentracao"] == "2ml"
         assert queries[1]["principio_ativo"] == "Hilano G-F 20"
         assert queries[1]["concentracao"] is None
+
+
+from services.medicamento_query_parser import resultado_relevante
+
+
+class TestResultadoRelevante:
+    def test_retorna_a_query_que_bateu(self):
+        queries = parse_termo_completo("Synvisc Classic 2ml / Hilano G-F 20")
+        match = resultado_relevante("Edital de Hilano G-F 20 para joelho", queries)
+        assert match is not None
+        assert match["principio_ativo"] == "Hilano G-F 20"
+
+    def test_retorna_none_quando_nenhuma_parte_bate(self):
+        queries = parse_termo_completo("Mepolizumabe 100 MG/ML")
+        assert resultado_relevante("Edital de Omalizumabe 75mg", queries) is None
+
+    def test_retorna_primeira_query_que_bater(self):
+        queries = parse_termo_completo("Mepolizumabe 100 MG/ML")
+        match = resultado_relevante("Bula de Mepolizumabe injetável", queries)
+        assert match is not None
+        assert match["principio_ativo"] == "Mepolizumabe"
