@@ -11,7 +11,7 @@ export function useNotificacoes() {
   const carregarNotificacoes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API}/notificacoes/oportunidades?limite=15`);
+      const res = await axios.get(`${API}/notificacoes/regulatorias?limite=15`);
       setNotificacoes(res.data.alertas || []);
     } catch (err) {
       console.error('Erro ao carregar notificacoes:', err);
@@ -22,7 +22,7 @@ export function useNotificacoes() {
 
   const marcarLida = useCallback(async (alertaId) => {
     try {
-      await axios.post(`${API}/notificacoes/oportunidades/${alertaId}/lida`);
+      await axios.post(`${API}/notificacoes/regulatorias/${alertaId}/lida`);
       setNotificacoes(prev => prev.map(n => n.id === alertaId ? { ...n, lida: true } : n));
     } catch (err) {
       console.error('Erro ao marcar notificacao:', err);
