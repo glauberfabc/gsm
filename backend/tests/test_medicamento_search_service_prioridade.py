@@ -54,3 +54,36 @@ class TestCalcularPrioridadePenalidadeConcentracao:
             'classificacao_dama': 'indicio', '_obsoleto': False, 'tag_recente': False,
         }
         assert svc._calcular_prioridade(item, NOW) == 4
+
+
+class TestDedupResultados:
+    def test_duplicata_mantem_versao_com_concentracao_confirmada(self):
+        # mesmo titulo (ex.: mesma materia do DOU retornada por 2 buscas
+        # distintas), uma com concentracao confirmada e outra sem - o
+        # resultado confirmado deve prevalecer, independente da ordem.
+        nao_confirmado = {'titulo': 'Portaria X - Mepolizumabe', 'concentracao_confirmada': False}
+        confirmado = {'titulo': 'Portaria X - Mepolizumabe', 'concentracao_confirmada': True}
+
+        deduped = MedicamentoSearchService._dedup_resultados([nao_confirmado, confirmado])
+        assert len(deduped) == 1
+        assert deduped[0]['concentracao_confirmada'] is True
+
+    def test_duplicata_confirmada_primeiro_permanece_confirmada(self):
+        confirmado = {'titulo': 'Portaria X - Mepolizumabe', 'concentracao_confirmada': True}
+        nao_confirmado = {'titulo': 'Portaria X - Mepolizumabe', 'concentracao_confirmada': False}
+
+        deduped = MedicamentoSearchService._dedup_resultados([confirmado, nao_confirmado])
+        assert len(deduped) == 1
+        assert deduped[0]['concentracao_confirmada'] is True
+
+    def test_sem_duplicata_mantem_ambos(self):
+        item_a = {'titulo': 'Portaria A', 'concentracao_confirmada': True}
+        item_b = {'titulo': 'Portaria B', 'concentracao_confirmada': False}
+
+        deduped = MedicamentoSearchService._dedup_resultados([item_a, item_b])
+        assert len(deduped) == 2
+
+    def test_titulo_vazio_e_descartado(self):
+        deduped = MedicamentoSearchService._dedup_resultados([{'titulo': ''}, {'titulo': 'X'}])
+        assert len(deduped) == 1
+        assert deduped[0]['titulo'] == 'X'

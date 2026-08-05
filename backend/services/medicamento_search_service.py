@@ -114,6 +114,30 @@ class MedicamentoSearchService:
             logger.error(f"Erro busca {nome}: {e}")
             return nome, [], "erro"
 
+    @staticmethod
+    def _dedup_resultados(resultados: List[Dict]) -> List[Dict]:
+        """Remove duplicatas por titulo (60 primeiros chars, case-insensitive).
+
+        Quando duas entradas colidem na mesma chave, prefere manter a que tem
+        concentracao_confirmada=True - ex.: o mesmo artigo do DOU pode ser
+        retornado por consultas diferentes com trechos destacados distintos,
+        avaliando a concentracao de forma diferente.
+        """
+        seen = {}
+        deduped = []
+        for r in resultados:
+            key = r.get('titulo', '')[:60].upper()
+            if not key:
+                continue
+            if key not in seen:
+                seen[key] = r
+                deduped.append(r)
+            elif r.get('concentracao_confirmada') is True and seen[key].get('concentracao_confirmada') is not True:
+                idx = deduped.index(seen[key])
+                deduped[idx] = r
+                seen[key] = r
+        return deduped
+
     async def buscar(self, medicamento: str) -> Dict:
         """Busca completa com priorização dinâmica DAMA."""
         termo = medicamento.strip()
@@ -145,13 +169,7 @@ class MedicamentoSearchService:
                 fontes.append({"nome": nome, "total": len(items), "status": status})
 
         # Dedup
-        seen = set()
-        deduped = []
-        for r in resultados:
-            key = r.get('titulo', '')[:60].upper()
-            if key and key not in seen:
-                seen.add(key)
-                deduped.append(r)
+        deduped = self._dedup_resultados(resultados)
 
         # ========== REFINAMENTO: Verificar conteúdo real dos DOU ambíguos ==========
         try:
