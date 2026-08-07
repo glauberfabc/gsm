@@ -101,7 +101,10 @@ class MotorBuscaIndependente:
             from services.orgaos_saude_federal import bate_orgao_saude
             todos = [
                 r for r in todos
-                if bate_orgao_saude(r.get('orgao'), r.get('_pncp_cnpj') or r.get('orgao_cnpj'))
+                if bate_orgao_saude(
+                    r.get('orgao') or r.get('orgao_nome'),
+                    r.get('_pncp_cnpj') or r.get('orgao_cnpj')
+                )
             ]
 
         # Filtros de Pós-Processamento
