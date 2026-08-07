@@ -44,6 +44,7 @@ class MotorBuscaIndependente:
         uf: str = None,
         modalidade: str = None,
         limit: int = 50,
+        apenas_ministerio_saude: bool = False,
         **kwargs
     ) -> Dict:
         termo = (termo or '').strip()
@@ -95,6 +96,13 @@ class MotorBuscaIndependente:
                 logger.error(f"Motor {k}: {r}")
 
         todos = self._dedup(todos)
+
+        if apenas_ministerio_saude:
+            from services.orgaos_saude_federal import bate_orgao_saude
+            todos = [
+                r for r in todos
+                if bate_orgao_saude(r.get('orgao'), r.get('_pncp_cnpj') or r.get('orgao_cnpj'))
+            ]
 
         # Filtros de Pós-Processamento
         if uf_final:
