@@ -188,7 +188,7 @@ async def consultar_contratacoes_pncp(
     if data_publicacao_final:
         params["dataPublicacaoPncpFinal"] = data_publicacao_final
     if cnpj_orgao:
-        params["cnpjOrgao"] = cnpj_orgao
+        params["orgaoEntidadeCnpj"] = cnpj_orgao
     if uf:
         params["uf"] = uf
     if modalidade is not None:
