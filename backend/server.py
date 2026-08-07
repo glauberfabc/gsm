@@ -1318,6 +1318,7 @@ async def search_unified(
     estados: str = Query(None, description="Filtro por estados (alias UF)"),
     apenas_saude: bool = Query(False, description="Filtrar apenas saúde"),
     modalidade: str = Query(None, description="Filtro por modalidade"),
+    ministerio_saude: bool = Query(False, description="Filtrar apenas órgãos do Ministério da Saúde"),
     limit: int = Query(50, ge=1, le=2000, description="Máximo de resultados"),
     page: int = Query(1, ge=1, description="Página")
 ):
@@ -1330,8 +1331,8 @@ async def search_unified(
     
     try:
         tem_localizacao = bool((municipio and municipio.strip()) or (uf and uf.strip()) or (estados and estados.strip()))
-        if not tem_localizacao and (not q or len(q.strip()) < 2):
-            raise HTTPException(status_code=400, detail="Informe um termo de busca (mín. 2 caracteres) ou um filtro de Município/Estado")
+        if not tem_localizacao and not ministerio_saude and (not q or len(q.strip()) < 2):
+            raise HTTPException(status_code=400, detail="Informe um termo de busca (mín. 2 caracteres), um filtro de Município/Estado, ou ative o filtro Ministério da Saúde")
 
         from services.motor_independente import MotorBuscaIndependente
         motor = MotorBuscaIndependente(db=db)
@@ -1343,7 +1344,8 @@ async def search_unified(
             estados=estados,
             municipio=municipio,
             modalidade=modalidade,
-            limit=limit
+            limit=limit,
+            apenas_ministerio_saude=ministerio_saude,
         )
         
         tempo_ms = (time.time() - inicio) * 1000
