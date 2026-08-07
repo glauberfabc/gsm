@@ -272,46 +272,71 @@ class MotorBuscaIndependente:
         data_inicial = (hoje - timedelta(days=180)).strftime('%Y-%m-%d')
         data_final = hoje.strftime('%Y-%m-%d')
 
+        async def _consultar(cnpj: str, modalidade: int) -> List[Dict]:
+            resultado = await consultar_contratacoes_pncp(
+                data_publicacao_inicial=data_inicial,
+                data_publicacao_final=data_final,
+                cnpj_orgao=cnpj,
+                modalidade=modalidade,
+                max_pages=5,
+            )
+            return resultado.get('resultado', [])
+
+        chamadas = [
+            (org['cnpj'], modalidade)
+            for org in ORGAOS_SAUDE_FEDERAL if org.get('cnpj')
+            for modalidade in self.MODALIDADES_RELEVANTES
+        ]
+        respostas = await asyncio.gather(
+            *(_consultar(cnpj, modalidade) for cnpj, modalidade in chamadas),
+            return_exceptions=True
+        )
+
         brutos = []
         algum_sucesso = False
-        for org in ORGAOS_SAUDE_FEDERAL:
-            if not org.get('cnpj'):
+        for (cnpj, modalidade), r in zip(chamadas, respostas):
+            if isinstance(r, Exception):
+                logger.error(f"Erro consultando CNPJ {cnpj} modalidade {modalidade}: {r}")
                 continue
-            for modalidade in self.MODALIDADES_RELEVANTES:
-                try:
-                    resultado = await consultar_contratacoes_pncp(
-                        data_publicacao_inicial=data_inicial,
-                        data_publicacao_final=data_final,
-                        cnpj_orgao=org['cnpj'],
-                        modalidade=modalidade,
-                        max_pages=5,
-                    )
-                    itens = resultado.get('resultado', [])
-                    if itens:
-                        algum_sucesso = True
-                    brutos.extend(itens)
-                except Exception as e:
-                    logger.error(f"Erro consultando CNPJ {org['cnpj']} modalidade {modalidade}: {e}")
+            algum_sucesso = True
+            brutos.extend(r)
 
-        if not algum_sucesso and not brutos:
+        mapeados = [m for it in brutos if (m := self._map_comprasgov_contratacao(it))]
+        mapeados = self._dedup(mapeados)
+
+        # v80.2: a checagem de "sem resultado" precisa ocorrer APÓS o
+        # mapeamento, não sobre `brutos`/`algum_sucesso` crus - se toda
+        # chamada teve sucesso mas `_map_comprasgov_contratacao` falhar em
+        # 100% dos itens (ex.: API mudou de formato), cair no branch de
+        # sucesso com total=0 e sem aviso seria exatamente a falha
+        # silenciosa que este método existe para evitar.
+        if not mapeados:
             cache_resultado = await self._buscar_cache_localizacao(cache_key)
             if cache_resultado:
-                logger.warning("⚠️ [MS-SEM-TERMO] API indisponível: servindo resultado em cache")
+                logger.warning("⚠️ [MS-SEM-TERMO] Sem resultados novos: servindo resultado em cache")
                 cache_resultado['fonte_disponivel'] = False
-                cache_resultado['aviso'] = 'A fonte de dados do Ministério da Saúde está instável no momento. Exibindo a última busca disponível em cache.'
+                cache_resultado['aviso'] = (
+                    'A fonte de dados do Ministério da Saúde está instável no momento. '
+                    'Exibindo a última busca disponível em cache.'
+                )
                 return cache_resultado
+
+            if algum_sucesso:
+                # As chamadas à API funcionaram (HTTP 200), só não havia
+                # contratações no período - bem diferente de instabilidade.
+                aviso = 'Nenhuma contratação encontrada para o Ministério da Saúde nos últimos 180 dias.'
+            else:
+                aviso = 'A fonte de dados do Ministério da Saúde está instável/indisponível no momento. Tente novamente em alguns minutos.'
 
             return {
                 'resultados': [],
                 'total': 0,
                 'pagina': pagina,
                 'fontes': {'pncp_gov_br': 0, 'compras_gov_br': 0},
-                'fonte_disponivel': False,
-                'aviso': 'A fonte de dados do Ministério da Saúde está instável/indisponível no momento. Tente novamente em alguns minutos.'
+                'fonte_disponivel': algum_sucesso,
+                'aviso': aviso,
             }
 
-        mapeados = [m for it in brutos if (m := self._map_comprasgov_contratacao(it))]
-        mapeados = self._dedup(mapeados)
         mapeados.sort(key=lambda x: x.get('data_publicacao') or '', reverse=True)
 
         idx_inicio = (pagina - 1) * limit
