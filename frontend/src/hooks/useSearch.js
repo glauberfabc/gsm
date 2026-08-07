@@ -19,9 +19,10 @@ export function useSearch() {
   const [currentPage, setCurrentPage] = useState(1);
   const [paginationInfo, setPaginationInfo] = useState(null);
   const [avisoFonte, setAvisoFonte] = useState(null);
+  const [filtroMinisterioSaude, setFiltroMinisterioSaude] = useState(false);
 
-  const executarBusca = async (termo, cidade, uf, smart = false, page = 1) => {
-    if (!termo && !cidade && !uf) return;
+  const executarBusca = async (termo, cidade, uf, smart = false, page = 1, msSaude = filtroMinisterioSaude) => {
+    if (!termo && !cidade && !uf && !msSaude) return;
     setIsLoading(true);
     setAvisoFonte(null);
     try {
@@ -30,6 +31,7 @@ export function useSearch() {
       if (cidade) params.append('municipio', cidade);
       if (uf) params.append('estados', uf);
       if (smart) params.append('smart_search', 'true');
+      if (msSaude) params.append('ministerio_saude', 'true');
       params.append('limit', perPage);
       params.append('page', page || currentPage);
 
@@ -132,6 +134,7 @@ export function useSearch() {
     currentPage, setCurrentPage,
     paginationInfo,
     avisoFonte,
+    filtroMinisterioSaude, setFiltroMinisterioSaude,
     API,
   };
 }
