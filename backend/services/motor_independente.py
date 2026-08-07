@@ -64,6 +64,13 @@ class MotorBuscaIndependente:
                 modalidade=modalidade
             )
 
+        # Busca SEM termo, escopo Ministério da Saúde ("buscar todos")
+        if not termo and apenas_ministerio_saude:
+            return await self._buscar_ministerio_saude_sem_termo(
+                pagina=pagina,
+                limit=limit,
+            )
+
         # Remove duplicados preservando a ordem e define limite de até 20 termos
         termos_unicos = []
         for t in termo.split(','):
@@ -240,6 +247,131 @@ class MotorBuscaIndependente:
         }
         await self._salvar_cache_localizacao(cache_key, resultado_final)
         return resultado_final
+
+    # ─── Compras.gov.br — Ministério da Saúde sem termo ("buscar todos") ──
+    MODALIDADES_RELEVANTES = [4, 6, 8, 9]  # concorrencia, pregao eletronico, dispensa, inexigibilidade
+
+    async def _buscar_ministerio_saude_sem_termo(
+        self,
+        pagina: int = 1,
+        limit: int = 50,
+    ) -> Dict:
+        """
+        Lista contratações recentes do Ministério da Saúde (CNPJ
+        00394544000185) sem exigir termo de busca, via Compras.gov.br
+        (consultar_contratacoes_pncp com filtro de CNPJ - mecanismo
+        validado ao vivo durante o design; a API oficial do PNCP não tem
+        filtro de órgão funcional).
+        """
+        from services.orgaos_saude_federal import ORGAOS_SAUDE_FEDERAL
+        from backend.scrapers.comprasgov_client import consultar_contratacoes_pncp
+
+        cache_key = f"MS|{pagina}|{limit}"
+
+        hoje = datetime.now()
+        data_inicial = (hoje - timedelta(days=180)).strftime('%Y-%m-%d')
+        data_final = hoje.strftime('%Y-%m-%d')
+
+        brutos = []
+        algum_sucesso = False
+        for org in ORGAOS_SAUDE_FEDERAL:
+            if not org.get('cnpj'):
+                continue
+            for modalidade in self.MODALIDADES_RELEVANTES:
+                try:
+                    resultado = await consultar_contratacoes_pncp(
+                        data_publicacao_inicial=data_inicial,
+                        data_publicacao_final=data_final,
+                        cnpj_orgao=org['cnpj'],
+                        modalidade=modalidade,
+                        max_pages=5,
+                    )
+                    itens = resultado.get('resultado', [])
+                    if itens:
+                        algum_sucesso = True
+                    brutos.extend(itens)
+                except Exception as e:
+                    logger.error(f"Erro consultando CNPJ {org['cnpj']} modalidade {modalidade}: {e}")
+
+        if not algum_sucesso and not brutos:
+            cache_resultado = await self._buscar_cache_localizacao(cache_key)
+            if cache_resultado:
+                logger.warning("⚠️ [MS-SEM-TERMO] API indisponível: servindo resultado em cache")
+                cache_resultado['fonte_disponivel'] = False
+                cache_resultado['aviso'] = 'A fonte de dados do Ministério da Saúde está instável no momento. Exibindo a última busca disponível em cache.'
+                return cache_resultado
+
+            return {
+                'resultados': [],
+                'total': 0,
+                'pagina': pagina,
+                'fontes': {'pncp_gov_br': 0, 'compras_gov_br': 0},
+                'fonte_disponivel': False,
+                'aviso': 'A fonte de dados do Ministério da Saúde está instável/indisponível no momento. Tente novamente em alguns minutos.'
+            }
+
+        mapeados = [m for it in brutos if (m := self._map_comprasgov_contratacao(it))]
+        mapeados = self._dedup(mapeados)
+        mapeados.sort(key=lambda x: x.get('data_publicacao') or '', reverse=True)
+
+        idx_inicio = (pagina - 1) * limit
+        pagina_resultados = mapeados[idx_inicio: idx_inicio + limit]
+
+        resultado_final = {
+            'resultados': pagina_resultados,
+            'total': len(mapeados),
+            'pagina': pagina,
+            'fontes': {'pncp_gov_br': 0, 'compras_gov_br': len(mapeados)},
+            'fonte_disponivel': True,
+        }
+        await self._salvar_cache_localizacao(cache_key, resultado_final)
+        return resultado_final
+
+    def _map_comprasgov_contratacao(self, item: Dict) -> Optional[Dict]:
+        """Mapeia uma contratação do Compras.gov.br (modulo-contratacoes)
+        para o mesmo schema usado por _map_pncp/_map_consulta_proposta."""
+        try:
+            cnpj = item.get('orgaoEntidadeCnpj', '')
+            orgao = item.get('orgaoEntidadeRazaoSocial', '') or item.get('unidadeOrgaoNomeUnidade', '')
+            uf = item.get('unidadeOrgaoUfSigla', '')
+            municipio = item.get('unidadeOrgaoMunicipioNome', '')
+            objeto = (item.get('objetoCompra', '') or '').upper()
+            numero_pncp = item.get('numeroControlePNCP', '')
+            ano = str(item.get('anoCompra', ''))
+            seq = str(item.get('sequencialCompra', ''))
+
+            link_pagina = f"https://pncp.gov.br/app/editais/{cnpj}/{ano}/{seq}" if (cnpj and ano and seq) else ''
+            link_download = f"/api/editais/download/{cnpj}/{ano}/{seq}" if (cnpj and ano and seq) else ''
+            id_gsm = hashlib.md5(f"PNCP-{numero_pncp}".encode()).hexdigest() if numero_pncp else ''
+
+            return {
+                'id': id_gsm,
+                'id_gsm': id_gsm,
+                'id_externo': numero_pncp,
+                'numero_controle_pncp': numero_pncp,
+                'fonte': 'COMPRAS_GOV',
+                'portal_captura': f"Compras.gov ({uf})" if uf else 'Compras.gov',
+                'objeto': objeto,
+                'orgao': orgao,
+                'uf': uf,
+                'municipio': municipio,
+                'modalidade': item.get('modalidadeNome', ''),
+                'data_publicacao': item.get('dataPublicacaoPncp', ''),
+                'data_abertura': item.get('dataAberturaPropostaPncp', ''),
+                'data_final': item.get('dataEncerramentoPropostaPncp', ''),
+                'valor_estimado': item.get('valorTotalEstimado', 0),
+                'link_portal': link_pagina,
+                'link_pdf': link_download,
+                'link_edital': link_pagina,
+                '_pncp_cnpj': cnpj,
+                '_pncp_ano': ano,
+                '_pncp_seq': seq,
+                'itens': '',
+                'ativo': True,
+            }
+        except Exception as e:
+            logger.error(f"Erro mapeando contratação Compras.gov: {e}")
+            return None
 
     # ─── Cache de resiliência (PNCP Consulta API é instável) ──
     CACHE_COLLECTION = 'cache_busca_localizacao'

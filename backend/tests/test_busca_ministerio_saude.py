@@ -87,3 +87,28 @@ class TestFiltroOrgaoCamposComprasGov:
         nome = resultado_pncp.get('orgao') or resultado_pncp.get('orgao_nome')
         cnpj = resultado_pncp.get('_pncp_cnpj') or resultado_pncp.get('orgao_cnpj')
         assert bate_orgao_saude(nome, cnpj) is True
+
+
+class TestBuscaMinisterioSaudeSemTermo:
+    def test_buscar_todos_sem_termo_retorna_algo_ou_aviso_explicito(self):
+        """GET /api/search/unified?ministerio_saude=true (sem q) deve
+        retornar resultados OU um aviso explícito de indisponibilidade -
+        nunca uma lista vazia silenciosa sem explicação."""
+        resp = requests.get(
+            f"{BASE_URL}/api/search/unified",
+            params={"ministerio_saude": "true", "limit": 20},
+            timeout=90,
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+
+        if data.get('total', 0) == 0:
+            assert data.get('aviso'), (
+                "Sem resultados e sem aviso explicativo - o modo 'buscar todos' "
+                "não deve falhar silenciosamente"
+            )
+        else:
+            for r in data.get('resultados', [])[:10]:
+                orgao = r.get('orgao', '').upper()
+                assert 'SAUDE' in orgao or 'MINISTERIO' in orgao or 'INCA' in orgao or 'FIOCRUZ' in orgao, \
+                    f"Resultado de órgão inesperado no modo Ministério da Saúde: {orgao}"
