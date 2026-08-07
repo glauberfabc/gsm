@@ -220,13 +220,13 @@ mortos) descartada após a validação.
 
 ## Testes
 
-- Unitário: `bate_orgao_saude` — casos de CNPJ exato, keyword com/sem acento,
-  não-match.
-- Unitário: `BuscaServiceV2.buscar(apenas_ministerio_saude=True)` com termo —
-  confirma que resultados de órgãos fora da lista são descartados.
-- Unitário: varredura por UASG (termo vazio) — usando fakes de HTTP, confirma
-  que itera `ORGAOS_SAUDE_FEDERAL` e agrega resultados.
-- Não há teste de integração ao vivo contra PNCP/ComprasNet nesta feature
-  (mesma limitação já aceita pelas demais buscas externas do projeto — sem
-  mocks de rede, aviso, ver testes existentes de `comprasnet_search_service`
-  e `pncp_search_service`, que não têm cobertura unitária hoje).
+- Unitário (pytest puro, sem I/O): `bate_orgao_saude` — casos de CNPJ exato,
+  keyword com/sem acento, não-match. Mesmo padrão de
+  `medicamento_query_parser.py`.
+- Integração ao vivo (mesmo padrão de `test_gsm_v78_independente.py`, que já
+  testa `motor_independente.py` via `requests` contra `BASE_URL`, sem mocks —
+  `motor_independente.py` não tem nenhuma cobertura unitária com fakes hoje,
+  então não introduzimos um padrão novo): `GET /api/search/unified?q=...&ministerio_saude=true`
+  retorna só resultados cujo órgão bate com `ORGAOS_SAUDE_FEDERAL`; e
+  `GET /api/search/unified?ministerio_saude=true` (sem `q`) retorna resultados
+  não-vazios ou um `aviso` explícito de indisponibilidade.
