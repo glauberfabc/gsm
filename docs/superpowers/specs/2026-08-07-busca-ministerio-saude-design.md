@@ -71,30 +71,22 @@ Lista de dicts, fácil de editar (mesmo padrão de `CATEGORIAS_LMR` /
 ```python
 ORGAOS_SAUDE_FEDERAL = [
     {
-        'nome': 'DLOG - Departamento de Logística em Saúde',
-        'uasg': '250005',
-        'cnpj': '00394445000139',
-        'keywords': ['ministerio da saude', 'departamento de logistica em saude', 'dlog'],
-    },
-    {
-        'nome': 'SESAI / DSEI - Saúde Indígena',
-        'uasg': None,  # varias UASGs por DSEI regional, ex: 257025 (Alto Rio Solimões)
-        'cnpj': '00394445000139',
-        'keywords': ['dsei', 'saude indigena', 'sesai'],
+        'nome': 'Ministério da Saúde - Administração Direta',
+        # CNPJ confirmado ao vivo (razaoSocial retornado = "MINISTERIO DA
+        # SAUDE"): cobre DLOG (UASG 250005), INCA, DSEIs/SESAI, Instituto
+        # Nacional de Cardiologia, Instituto Nacional de Traumato-Ortopedia
+        # e outras unidades da administração direta - todos sob o mesmo CNPJ.
+        'cnpj': '00394544000185',
+        'keywords': ['ministerio da saude', 'dlog', 'departamento de logistica em saude',
+                     'inca', 'instituto nacional de cancer', 'dsei', 'saude indigena', 'sesai'],
     },
     {
         'nome': 'Fiocruz - Fundação Oswaldo Cruz',
-        'uasg': None,  # a validar por unidade
-        'cnpj': None,  # CNPJ proprio, diferente do MS - a validar
+        'cnpj': None,  # fundação com CNPJ próprio, distinto do MS - a validar na implementação
         'keywords': ['fiocruz', 'fundacao oswaldo cruz'],
     },
-    {
-        'nome': 'INCA - Instituto Nacional de Câncer',
-        'uasg': None,  # a validar
-        'cnpj': None,  # CNPJ proprio - a validar
-        'keywords': ['inca', 'instituto nacional de cancer'],
-    },
-    # + hospitais federais, INCQS - completados durante a implementação
+    # + outras fundações/autarquias vinculadas com CNPJ próprio, se existirem -
+    # verificar durante a implementação
 ]
 ```
 
@@ -168,6 +160,27 @@ condição válida adicional para permitir busca sem termo (equivalente a
   campo (vazio ou preenchido).
 - Resultados renderizam nos mesmos componentes de card já existentes — nenhum
   componente novo de exibição.
+
+## CNPJ correto do Ministério da Saúde (2ª correção)
+
+O CNPJ `00394411000109`, usado numa primeira correção, também estava errado —
+é a **Presidência da República**, não o Ministério da Saúde (confirmado pelo
+campo `razaoSocial` retornado pela própria API ao filtrar por ele). O CNPJ
+raiz real, confirmado via `razaoSocial: "MINISTERIO DA SAUDE"` na resposta da
+API, é **`00394544000185`**.
+
+Achado bônus: uma única consulta com esse CNPJ já retorna resultados de
+INCA ("INSTITUTO NACIONAL DO CANCER"), DSEI/SESAI ("DIST. SANT. ESP.
+INDIGENA"), Instituto Nacional de Cardiologia e Instituto Nacional de
+Traumato-Ortopedia — ou seja, esses institutos/unidades são "unidades" sob o
+mesmo CNPJ da administração direta do Ministério, não entidades com CNPJ
+próprio como o Gemini presumiu. Isso simplifica bastante a lista curada: um
+único CNPJ cobre a maior parte do portfólio. Só a **Fiocruz** continua sendo
+uma fundação com CNPJ próprio e distinto (ainda não confirmado — precisa de
+uma consulta específica na implementação, usando o mesmo método:
+`/modulo-uasg/1_consultarUasg?codigoUasg=<candidato>&statusUasg=true`, ou
+testar candidatos direto no endpoint de contratações e checar o
+`razaoSocial` retornado, como feito aqui).
 
 ## Fonte para o modo "buscar todos" (achado durante validação ao vivo)
 
