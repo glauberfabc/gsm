@@ -112,3 +112,21 @@ class TestBuscaMinisterioSaudeSemTermo:
                 orgao = r.get('orgao', '').upper()
                 assert 'SAUDE' in orgao or 'MINISTERIO' in orgao or 'INCA' in orgao or 'FIOCRUZ' in orgao, \
                     f"Resultado de órgão inesperado no modo Ministério da Saúde: {orgao}"
+
+
+class TestFiocruzExcluidaDeBuscarTodos:
+    def test_fiocruz_sem_cnpj_e_excluida_do_loop_buscar_todos(self):
+        """Fiocruz nao tem CNPJ confirmado em ORGAOS_SAUDE_FEDERAL, entao o
+        modo 'buscar todos' (sem termo) nunca deve incluir seu CNPJ na
+        lista de chamadas - so aparece via matching por keyword no modo
+        com termo."""
+        from services.orgaos_saude_federal import ORGAOS_SAUDE_FEDERAL
+
+        orgaos_com_cnpj = [org for org in ORGAOS_SAUDE_FEDERAL if org.get('cnpj')]
+        nomes_com_cnpj = [org['nome'] for org in orgaos_com_cnpj]
+
+        assert not any('Fiocruz' in nome or 'Oswaldo Cruz' in nome for nome in nomes_com_cnpj), (
+            "Fiocruz nao deveria ter CNPJ confirmado ainda (limitacao conhecida) - "
+            "se este teste falhar porque o CNPJ foi encontrado, otimo, so ajuste o teste "
+            "para refletir a nova realidade em vez de apenas apaga-lo"
+        )

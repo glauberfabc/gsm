@@ -56,13 +56,30 @@ class MotorBuscaIndependente:
         # no servidor, então usamos a API oficial de Consulta (contratacoes/proposta),
         # que suporta uf e codigoMunicipioIbge nativamente.
         if not termo and (uf_final or municipio_busca):
-            return await self._buscar_por_localizacao(
+            resultado_localizacao = await self._buscar_por_localizacao(
                 uf=uf_final,
                 municipio=municipio_busca,
                 pagina=pagina,
                 limit=limit,
                 modalidade=modalidade
             )
+            if apenas_ministerio_saude and isinstance(resultado_localizacao, dict) and 'resultados' in resultado_localizacao:
+                from services.orgaos_saude_federal import bate_orgao_saude
+                resultado_localizacao['resultados'] = [
+                    r for r in resultado_localizacao['resultados']
+                    if bate_orgao_saude(
+                        r.get('orgao') or r.get('orgao_nome'),
+                        r.get('_pncp_cnpj') or r.get('orgao_cnpj')
+                    )
+                ]
+                # 'total' aqui reflete apenas a página já paginada/recortada
+                # por _buscar_por_localizacao, não uma recontagem global do
+                # PNCP após o filtro - re-paginar o endpoint de localização
+                # inteiro só para este filtro seria bem mais invasivo, então
+                # aceitamos que 'total' pode parecer baixo/inconsistente
+                # entre páginas quando este filtro está ativo.
+                resultado_localizacao['total'] = len(resultado_localizacao['resultados'])
+            return resultado_localizacao
 
         # Busca SEM termo, escopo Ministério da Saúde ("buscar todos")
         if not termo and apenas_ministerio_saude:
