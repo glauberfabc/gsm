@@ -17,6 +17,7 @@ export function SearchTab({
   currentPage, setCurrentPage,
   paginationInfo,
   avisoFonte,
+  filtroMinisterioSaude, setFiltroMinisterioSaude,
 }) {
   const highlightText = (text, highlight) => <HighlightText text={text} highlight={highlight} />;
 
@@ -116,6 +117,16 @@ export function SearchTab({
         <p className="text-xs font-black text-slate-400 uppercase tracking-widest w-full mb-1 flex items-center gap-2">
           <Radar size={16}/> Radares de Atalho / Perfis de Busca:
         </p>
+        <button
+          data-testid="filtro-ministerio-saude"
+          onClick={() => {
+            const novoValor = !filtroMinisterioSaude;
+            setFiltroMinisterioSaude(novoValor);
+            executarBusca(searchTerm, searchCity, selectedUF, isSmartSearch, 1, novoValor);
+          }}
+          className={`px-5 py-2 rounded-full border-2 text-xs font-black uppercase tracking-wider transition-all ${filtroMinisterioSaude ? 'bg-teal-600 text-white border-teal-500 shadow-lg' : 'bg-white text-slate-500 border-slate-200 hover:border-teal-300 hover:text-teal-600'}`}>
+          Ministério da Saúde
+        </button>
         {radaresAtalho.map(r => (
           <button key={r.id} onClick={() => handleSelectRadar(r.id, r.keywords)}
             className={`px-5 py-2 rounded-full border-2 text-xs font-black uppercase tracking-wider transition-all ${selectedRadarId === r.id ? 'bg-blue-600 text-white border-blue-500 shadow-lg' : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300 hover:text-blue-600'}`}>
