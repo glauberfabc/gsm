@@ -311,30 +311,39 @@ class MotorBuscaIndependente:
         # sucesso com total=0 e sem aviso seria exatamente a falha
         # silenciosa que este método existe para evitar.
         if not mapeados:
-            cache_resultado = await self._buscar_cache_localizacao(cache_key)
-            if cache_resultado:
-                logger.warning("⚠️ [MS-SEM-TERMO] Sem resultados novos: servindo resultado em cache")
-                cache_resultado['fonte_disponivel'] = False
-                cache_resultado['aviso'] = (
-                    'A fonte de dados do Ministério da Saúde está instável no momento. '
-                    'Exibindo a última busca disponível em cache.'
-                )
-                return cache_resultado
+            if not algum_sucesso:
+                # Só cai para um cache possivelmente obsoleto quando a API
+                # de fato falhou hoje - se algum_sucesso for True, a
+                # resposta "zero resultados" já é fresca e confiável, não
+                # precisa (nem deve) ser substituída por uma stale.
+                cache_resultado = await self._buscar_cache_localizacao(cache_key)
+                if cache_resultado:
+                    logger.warning("⚠️ [MS-SEM-TERMO] API indisponível: servindo resultado em cache")
+                    cache_resultado['fonte_disponivel'] = False
+                    cache_resultado['aviso'] = (
+                        'A fonte de dados do Ministério da Saúde está instável no momento. '
+                        'Exibindo a última busca disponível em cache.'
+                    )
+                    return cache_resultado
 
-            if algum_sucesso:
-                # As chamadas à API funcionaram (HTTP 200), só não havia
-                # contratações no período - bem diferente de instabilidade.
-                aviso = 'Nenhuma contratação encontrada para o Ministério da Saúde nos últimos 180 dias.'
-            else:
-                aviso = 'A fonte de dados do Ministério da Saúde está instável/indisponível no momento. Tente novamente em alguns minutos.'
+                return {
+                    'resultados': [],
+                    'total': 0,
+                    'pagina': pagina,
+                    'fontes': {'pncp_gov_br': 0, 'compras_gov_br': 0},
+                    'fonte_disponivel': False,
+                    'aviso': 'A fonte de dados do Ministério da Saúde está instável/indisponível no momento. Tente novamente em alguns minutos.',
+                }
 
+            # As chamadas à API funcionaram (HTTP 200), só não havia
+            # contratações no período - bem diferente de instabilidade.
             return {
                 'resultados': [],
                 'total': 0,
                 'pagina': pagina,
                 'fontes': {'pncp_gov_br': 0, 'compras_gov_br': 0},
-                'fonte_disponivel': algum_sucesso,
-                'aviso': aviso,
+                'fonte_disponivel': True,
+                'aviso': 'Nenhuma contratação encontrada para o Ministério da Saúde nos últimos 180 dias.',
             }
 
         mapeados.sort(key=lambda x: x.get('data_publicacao') or '', reverse=True)
