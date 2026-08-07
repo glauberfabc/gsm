@@ -31,3 +31,14 @@ class TestBateOrgaoSaude:
     def test_lista_tem_pelo_menos_ministerio_da_saude(self):
         nomes = [o['nome'] for o in ORGAOS_SAUDE_FEDERAL]
         assert any('Ministério da Saúde' in n or 'Ministerio da Saude' in n for n in nomes)
+
+    def test_keyword_fiocruz_bate_por_nome(self):
+        assert bate_orgao_saude('FUNDACAO OSWALDO CRUZ - FIOCRUZ', None) is True
+
+    def test_keyword_curta_nao_bate_como_substring_dentro_de_outra_palavra(self):
+        # "brinca" contem "inca" como substring, mas nao como palavra inteira -
+        # nao pode disparar falso positivo pela keyword curta 'inca' (INCA).
+        assert bate_orgao_saude('PREFEITURA MUNICIPAL DE BRINCA-SE', None) is False
+
+    def test_cnpj_com_pontuacao_bate(self):
+        assert bate_orgao_saude('QUALQUER NOME', '00.394.544/0001-85') is True
