@@ -108,24 +108,50 @@ centraliza o critério de match (CNPJ exato OU substring de keyword,
 normalizado sem acento/caixa — reaproveita o padrão de normalização já usado
 em `medicamento_query_parser.normalizar`).
 
-### B. `BuscaServiceV2.buscar()` (`backend/services/busca_service_v2.py`)
+### B. `MotorBuscaIndependente.buscar()` (`backend/services/motor_independente.py`)
 
-Novo parâmetro `apenas_ministerio_saude: bool = False`.
+**Correção de premissa (achado durante a checagem técnica anterior à
+implementação):** `GET /api/search/unified` não usa `BuscaServiceV2`
+(`busca_service_v2.py`) — esse serviço é importado por outros fluxos, mas o
+endpoint real chama `MotorBuscaIndependente.buscar()` em
+`motor_independente.py` (v78-80, "100% independente" PNCP + Compras.gov.br).
+É esse arquivo que precisa ser alterado, não `busca_service_v2.py`.
 
-- **Com `termo_busca` preenchido**: fluxo atual roda sem mudanças (local
-  `editais_gsm` + PNCP ao vivo por termo). No fim, se
-  `apenas_ministerio_saude`, filtra `resultados_total` mantendo só itens onde
-  `bate_orgao_saude(item['orgao'], item['orgao_cnpj'])`.
-- **Sem `termo_busca`** (`apenas_ministerio_saude=True` e termo vazio): como a
-  busca nacional por termo não roda sem termo, este caso dispara uma
-  varredura direta por UASG — revive `_buscar_em_uasgs_saude()` de
-  `comprasnet_search_service.py`, atualizado para iterar `ORGAOS_SAUDE_FEDERAL`
-  (em vez da lista antiga incompleta) e sem exigir termo de match.
+Também foi confirmado ao vivo (3 tentativas, 2 endpoints oficiais do PNCP:
+`/contratacoes/publicacao` e `/contratacoes/proposta`) que **nenhum parâmetro
+de filtro por órgão/CNPJ funciona no lado do servidor** (`orgaoEntidadeCnpj`,
+`cnpjOrgao`, `orgaoCnpj` — todos ignorados, resultados voltam de órgãos
+aleatórios). Isso confirma que pós-filtro client-side é o único caminho
+confiável — não existe atalho de servidor a redescobrir depois.
 
-### C. Endpoint (`backend/server.py`)
+Novo parâmetro `apenas_ministerio_saude: bool = False` em `buscar()`:
 
-`GET /api/search/unified` ganha parâmetro opcional `ministerio_saude: bool`,
-repassado para `BuscaServiceV2.buscar(apenas_ministerio_saude=...)`.
+- **Com `termo` preenchido**: fluxo atual roda sem mudanças (`_buscar_pncp` +
+  `_buscar_compras_gov` em paralelo, por termo). Logo após
+  `todos = self._dedup(todos)`, se `apenas_ministerio_saude`, filtra `todos`
+  mantendo só itens onde `bate_orgao_saude(item['orgao'], item.get('_pncp_cnpj') or item.get('orgao_cnpj'))`.
+- **Sem `termo`** (`apenas_ministerio_saude=True`, termo vazio, sem uf/município):
+  hoje esse caso não é tratado (`buscar()` retorna vazio quando não há termo
+  nem uf/município — o próprio endpoint bloqueia essa combinação, ver Seção C).
+  Precisa de um novo método `_buscar_ministerio_saude_sem_termo()`, no mesmo
+  espírito de `_buscar_por_localizacao()` (que já existe para o caso "sem
+  termo, com uf/município"): itera `ORGAOS_SAUDE_FEDERAL` (por CNPJ) ×
+  códigos de modalidade via `comprasgov_client.consultar_contratacoes_pncp(orgaoEntidadeCnpj=..., codigoModalidade=...)`
+  (ver "Fonte para o modo buscar todos" abaixo — mecanismo confirmado
+  funcionando, substitui a ideia original de reviver
+  `comprasnet_search_service.py`). Se a chamada falhar (erro de rede, API
+  fora do ar), este modo degrada com `fonte_disponivel: False` e um `aviso`
+  claro, seguindo o mesmo padrão de resiliência que `_buscar_por_localizacao`
+  já usa quando o PNCP está instável.
+
+### C. Endpoint (`backend/server.py`, endpoint `search_unified` em `/api/search/unified`)
+
+Novo parâmetro `ministerio_saude: bool = Query(False, ...)`, repassado para
+`motor.buscar(apenas_ministerio_saude=ministerio_saude, ...)`. A validação
+atual (`if not tem_localizacao and (not q or len(q.strip()) < 2): raise
+HTTPException(400, ...)`) precisa tratar `ministerio_saude=True` como uma
+condição válida adicional para permitir busca sem termo (equivalente a
+`tem_localizacao`).
 
 ### D. Frontend
 
@@ -143,15 +169,41 @@ repassado para `BuscaServiceV2.buscar(apenas_ministerio_saude=...)`.
 - Resultados renderizam nos mesmos componentes de card já existentes — nenhum
   componente novo de exibição.
 
-## Risco conhecido
+## Fonte para o modo "buscar todos" (achado durante validação ao vivo)
 
-`comprasnet_search_service.py` nunca foi validado em produção (nunca foi
-chamado pelo pipeline real). Os endpoints que ele usa (CnetMobile, dados
-abertos do Compras.gov.br) podem estar quebrados, mudados ou instáveis. A
-primeira tarefa da implementação deve validar ao vivo se pelo menos um desses
-endpoints ainda funciona antes de revivê-lo; se nenhum funcionar, o modo
-"buscar todos" (termo vazio) usa `pncp_search_service` iterando um termo
-neutro por UASG como alternativa, documentada durante a implementação.
+A API oficial do PNCP não filtra por órgão/CNPJ em nenhum endpoint (ver Seção
+B). `comprasnet_search_service.py` está morto e os endpoints que usa (404
+confirmado). Mas o cliente já usado em produção,
+`backend/scrapers/comprasgov_client.py` → `consultar_contratacoes_pncp()`
+(endpoint `/modulo-contratacoes/1_consultarContratacoes_PNCP_14133` do
+Compras.gov.br), **tem um filtro de CNPJ que realmente funciona no
+servidor** — confirmado com requisições HTTP reais (não a ferramenta de
+fetch genérica, que retorna falsos 404 nesse domínio por causa de
+parâmetros obrigatórios que ela não define): sem filtro de CNPJ, uma consulta
+retornou 18.605 resultados de dezenas de órgãos distintos; com
+`orgaoEntidadeCnpj` do Ministério, retornou exatamente 0 (consistente com um
+filtro real, não com um parâmetro ignorado — se fosse ignorado veríamos a
+mesma centena de órgãos aleatórios de novo).
+
+**Bug real encontrado, dentro do escopo desta feature:**
+`consultar_contratacoes_pncp()` (linha ~191 de `comprasgov_client.py`) envia
+o parâmetro como `cnpjOrgao`, mas o nome correto aceito pela API é
+**`orgaoEntidadeCnpj`** (confirmado via OpenAPI spec ao vivo em
+`/v3/api-docs`). Isso também explica por que esse cliente pode estar
+retornando 0 resultados hoje em produção mesmo sem estar quebrado
+"visivelmente" (falha silenciosa). Corrigir esse parâmetro é necessário para
+esta feature funcionar e está dentro do escopo (é o mecanismo que o modo
+"buscar todos" depende).
+
+Esse mesmo endpoint também exige `codigoModalidade` (obrigatório — não tem
+busca "todas as modalidades" de uma vez) e um intervalo de datas de no
+máximo 365 dias. O modo "buscar todos" portanto itera
+`ORGAOS_SAUDE_FEDERAL` (por CNPJ) × códigos de modalidade relevantes
+(pregão eletrônico, dispensa eletrônica, concorrência etc. — a lista exata
+de códigos é levantada/validada na implementação), dentro de uma janela de
+data de até 365 dias, e agrega os resultados. Isso substitui a ideia
+original de "varredura por UASG via ComprasNet/CnetMobile" (endpoints
+mortos) descartada após a validação.
 
 ## Testes
 
