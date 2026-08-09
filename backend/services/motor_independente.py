@@ -781,11 +781,15 @@ class MotorBuscaIndependente:
         """Busca no Compras.gov.br usando o novo serviço robusto."""
         try:
             service = get_comprasgov_service(db=self.db)
-            # Busca nos últimos 60 dias para garantir bom recall
+            # Busca nos últimos 60 dias para garantir bom recall.
+            # v2: agora faz 1 chamada por modalidade relevante em paralelo
+            # (a API exige codigoModalidade - sem ele, 404 sempre). Como
+            # isso multiplica as chamadas, max_pages foi reduzido de 200
+            # para 20 por modalidade para manter a busca responsiva.
             result = await service.buscar_contratacoes_por_objeto(
                 termo=termo,
                 dias_atras=60,
-                max_pages=200 # Aumentado para 2000 resultados
+                max_pages=20
             )
             
             com_termo = result.get('com_termo', [])

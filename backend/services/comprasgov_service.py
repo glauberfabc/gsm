@@ -113,6 +113,14 @@ class ComprasGovService:
             "erros": result.get("erros", []),
         }
 
+    # codigoModalidade e obrigatorio na API do Compras.gov.br (nao ha opcao
+    # "todas as modalidades" numa unica chamada - confirmado via OpenAPI
+    # spec ao vivo: sem esse parametro a API retorna 404). Cobrimos as
+    # modalidades mais comuns para medicamentos/insumos (mesmo conjunto ja
+    # usado na busca por escopo Ministerio da Saude): Concorrencia
+    # Eletronica, Pregao Eletronico, Dispensa de Licitacao, Inexigibilidade.
+    MODALIDADES_BUSCA_GERAL = [4, 6, 8, 9]
+
     async def buscar_contratacoes_por_objeto(
         self,
         termo: str,
@@ -123,37 +131,58 @@ class ComprasGovService:
     ) -> Dict[str, Any]:
         """
         Busca contratações que contenham o termo no objeto.
-        
+
         Estratégia:
-        1. Buscar contratações publicadas nos últimos N dias
+        1. Buscar contratações publicadas nos últimos N dias (uma chamada
+           por modalidade relevante, em paralelo - a API não aceita
+           "todas as modalidades" numa única chamada)
         2. Filtrar localmente pelo termo no campo objeto
         3. Buscar itens das contratações relevantes
-        
+
         Args:
             termo: Palavra-chave (ex: "canabidiol", "insulina")
             dias_atras: Buscar publicações dos últimos N dias
             uf: Filtrar por UF
-            max_pages: Máximo de páginas
-        
+            max_pages: Máximo de páginas POR modalidade consultada
+            modalidade: Se informado, consulta só essa modalidade em vez
+                das modalidades padrão de busca geral
+
         Returns:
-            {"contratacoes": [...], "com_termo": [...], "total": int}
+            {"contratacoes_total": int, "com_termo": [...], "total": int}
         """
         hoje = datetime.now().strftime("%Y-%m-%d")
         data_inicial = (datetime.now() - timedelta(days=dias_atras)).strftime("%Y-%m-%d")
 
+        modalidades = [modalidade] if modalidade is not None else self.MODALIDADES_BUSCA_GERAL
+
         logger.info(
-            f"🔍 [ComprasGov] Buscando '{termo}' nas contratações de {data_inicial} a {hoje}"
+            f"🔍 [ComprasGov] Buscando '{termo}' nas contratações de {data_inicial} a {hoje} "
+            f"(modalidades: {modalidades})"
         )
 
-        result = await cgov.consultar_contratacoes_pncp(
-            data_publicacao_inicial=data_inicial,
-            data_publicacao_final=hoje,
-            uf=uf,
-            max_pages=max_pages,
-            modalidade=modalidade,
+        resultados_por_modalidade = await asyncio.gather(
+            *[
+                cgov.consultar_contratacoes_pncp(
+                    data_publicacao_inicial=data_inicial,
+                    data_publicacao_final=hoje,
+                    uf=uf,
+                    max_pages=max_pages,
+                    modalidade=mod,
+                )
+                for mod in modalidades
+            ],
+            return_exceptions=True,
         )
 
-        raw = result.get("resultado", [])
+        raw = []
+        tempo_total = 0.0
+        for r in resultados_por_modalidade:
+            if isinstance(r, Exception):
+                logger.error(f"Erro consultando modalidade no ComprasGov: {r}")
+                continue
+            raw.extend(r.get("resultado", []))
+            tempo_total += r.get("tempo_segundos", 0)
+
         termo_lower = termo.lower()
 
         # Filtrar pelo termo no objeto
@@ -172,7 +201,7 @@ class ComprasGovService:
             "contratacoes_total": len(raw),
             "com_termo": com_termo,
             "total": len(com_termo),
-            "tempo_segundos": result.get("tempo_segundos", 0),
+            "tempo_segundos": round(tempo_total, 2),
         }
 
     async def buscar_itens_contratacao(
