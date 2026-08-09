@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Info, Sparkles, Package, MapPin, Globe, Loader2, Radar, CheckCircle, Database, Hash, Building, Tag, Star, Calendar, Clock, DollarSign, ChevronRight, Download, AlertTriangle } from 'lucide-react';
 import { HighlightText } from '../common/HighlightText';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
@@ -371,15 +372,42 @@ function BidCard({ bid, searchTerm, expandedItens, setExpandedItens, setResults,
               const origHTML = btn.innerHTML;
               btn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> BAIXANDO EDITAL...';
               btn.style.opacity = '0.7'; btn.style.pointerEvents = 'none';
+              const url = getBidDownloadUrl(bid);
+              // O nosso proxy (/api/editais/download/...) as vezes recebe do
+              // PNCP um corpo JSON de erro em vez do arquivo real. Como esse
+              // caso ainda responde HTTP 200 as vezes, validamos a resposta
+              // antes de salvar - sem isso o navegador baixaria o JSON como
+              // se fosse o edital, sem nenhum aviso de erro.
+              const isNossoProxy = url.includes('/api/editais/download/');
               try {
-                const link = document.createElement('a');
-                link.href = getBidDownloadUrl(bid); link.download = '';
-                document.body.appendChild(link); link.click(); document.body.removeChild(link);
-                await new Promise(r => setTimeout(r, 3000));
+                if (isNossoProxy) {
+                  const res = await axios.get(url, { responseType: 'blob', validateStatus: () => true });
+                  const contentType = (res.headers['content-type'] || '').toLowerCase();
+                  if (res.status !== 200 || contentType.includes('json')) {
+                    throw new Error('Falha ao baixar o edital');
+                  }
+                  const blobUrl = window.URL.createObjectURL(res.data);
+                  const cd = res.headers['content-disposition'] || '';
+                  const match = cd.match(/filename="?([^";]+)"?/);
+                  const link = document.createElement('a');
+                  link.href = blobUrl;
+                  link.download = match ? decodeURIComponent(match[1]) : `edital_${bid.id}.pdf`;
+                  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                  window.URL.revokeObjectURL(blobUrl);
+                } else {
+                  // Fallback externo (ex: pagina do edital no site do PNCP,
+                  // quando nao temos o link direto do arquivo) - abre numa
+                  // nova aba, sem validar conteudo.
+                  const link = document.createElement('a');
+                  link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+                  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                }
                 btn.innerHTML = '<svg class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg> DOWNLOAD INICIADO!';
                 btn.style.opacity = '1'; btn.className = btn.className.replace('bg-emerald-600', 'bg-green-500');
                 await new Promise(r => setTimeout(r, 2000));
-              } catch(err) {}
+              } catch (err) {
+                toast.error('Não foi possível baixar o edital agora. Tente novamente ou abra direto no site do PNCP.');
+              }
               btn.innerHTML = origHTML; btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
               btn.className = btn.className.replace('bg-green-500', 'bg-emerald-600'); btn.dataset.loading = 'false';
             }}

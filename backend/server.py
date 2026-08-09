@@ -1471,21 +1471,47 @@ async def clone_status():
 # ==================== DOWNLOAD DE EDITAIS (PROXY PNCP) ====================
 
 @api_router.get("/editais/download/{cnpj}/{ano}/{seq}")
-async def download_edital_pncp(cnpj: str, ano: str, seq: str, doc: int = Query(1)):
-    """Baixa o PDF/ZIP do edital direto do PNCP e serve ao usuário."""
+async def download_edital_pncp(cnpj: str, ano: str, seq: str, doc: int = Query(None)):
+    """Baixa o PDF/ZIP do edital direto do PNCP e serve ao usuário.
+
+    Se `doc` não for informado explicitamente, identifica automaticamente
+    qual documento é "o edital" consultando a listagem oficial do PNCP
+    (o sequencial 1 nem sempre é o edital - a ordem dos anexos varia por
+    órgão). Também valida que o conteúdo retornado é realmente um arquivo
+    (não um corpo JSON de erro/metadado do PNCP) antes de servi-lo como
+    download - do contrário o navegador salvaria esse JSON como se fosse
+    o documento real.
+    """
     import aiohttp
-    
-    url = f"https://pncp.gov.br/pncp-api/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos/{doc}"
-    
+    from services.motor_independente import MotorBuscaIndependente
+
+    doc_id = doc
+    if doc_id is None:
+        motor = MotorBuscaIndependente()
+        arquivos = await motor.listar_arquivos(cnpj, ano, seq)
+        doc_id = MotorBuscaIndependente.escolher_documento_edital(arquivos)
+
+    url = f"https://pncp.gov.br/pncp-api/v1/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos/{doc_id}"
+
     try:
         timeout = aiohttp.ClientTimeout(total=30)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url) as resp:
                 if resp.status != 200:
                     raise HTTPException(status_code=404, detail="Arquivo não encontrado no PNCP")
-                
+
                 content = await resp.read()
-                
+                content_type = resp.headers.get('Content-Type', 'application/octet-stream')
+
+                # O PNCP as vezes responde 200 com um corpo JSON de erro/metadado
+                # em vez do arquivo real (ex: documento nao encontrado nesse
+                # sequencial). Sem essa checagem, esse JSON seria servido como
+                # se fosse o edital.
+                parece_json = 'json' in content_type.lower() or content[:1] in (b'{', b'[')
+                if parece_json:
+                    logger.warning(f"PNCP retornou conteúdo JSON em vez de arquivo para {cnpj}/{ano}/{seq}/{doc_id}: {content[:200]}")
+                    raise HTTPException(status_code=502, detail="O PNCP não retornou o arquivo do edital (resposta inesperada). Tente novamente ou abra direto no site do PNCP.")
+
                 # Extrair nome do arquivo do header
                 cd = resp.headers.get('Content-Disposition', '')
                 filename = f"edital_{cnpj}_{ano}_{seq}.pdf"
@@ -1493,9 +1519,7 @@ async def download_edital_pncp(cnpj: str, ano: str, seq: str, doc: int = Query(1
                     import urllib.parse
                     fname = cd.split('filename=')[-1].strip('"').strip("'")
                     filename = urllib.parse.unquote(fname)
-                
-                content_type = resp.headers.get('Content-Type', 'application/octet-stream')
-                
+
                 return Response(
                     content=content,
                     media_type=content_type,

@@ -876,6 +876,24 @@ class MotorBuscaIndependente:
             out.append(r)
         return out
 
+    @staticmethod
+    def escolher_documento_edital(arquivos: List[Dict]) -> int:
+        """Escolhe o sequencial do documento a baixar como "o edital" a
+        partir da listagem oficial do PNCP (retorno de listar_arquivos).
+
+        O PNCP nao garante que o documento de sequencial 1 seja o edital -
+        a ordem dos anexos varia por orgao. Preferimos o documento cujo
+        tipo esta marcado como "Edital"; se nenhum estiver marcado, usamos
+        o primeiro da lista; se a listagem vier vazia (falha ao consultar
+        o PNCP), caimos no sequencial 1 como ultimo recurso.
+        """
+        if not arquivos:
+            return 1
+        edital = next((a for a in arquivos if 'edital' in (a.get('tipo') or '').lower()), None)
+        if edital:
+            return edital.get('seq', 1)
+        return arquivos[0].get('seq', 1)
+
     async def listar_arquivos(self, cnpj: str, ano: str, seq: str) -> List[Dict]:
         """Lista todos os arquivos/documentos de um edital no PNCP."""
         try:
