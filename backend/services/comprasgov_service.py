@@ -520,6 +520,6 @@ def get_comprasgov_service(db=None) -> ComprasGovService:
     global _instance
     if _instance is None:
         _instance = ComprasGovService(db=db)
-    elif db and _instance.db is None:
+    elif db is not None and _instance.db is None:
         _instance.db = db
     return _instance
