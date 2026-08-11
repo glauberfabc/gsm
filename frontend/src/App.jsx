@@ -47,6 +47,10 @@ function AppContent() {
   const { user, logout } = useAuth();
 
   const search = useSearch();
+  // Instancia independente para a aba Ministerio da Saude (ex-Radar LMR) -
+  // evita que os resultados de uma aba sobrescrevam os da outra ao trocar
+  // de aba, ja que ambas usam a mesma busca por baixo.
+  const ministerioSaude = useSearch();
   const precos = usePrecos();
   const anvisa = useAnvisa();
   const companiesHook = useCompanies();
@@ -161,7 +165,12 @@ function AppContent() {
         {activeTab === 'radar-lmr' && (
           <Suspense fallback={LazyFallback}>
             <div data-testid="radar-lmr-dashboard">
-              <RadarLmrTab {...radarLmr} />
+              <RadarLmrTab
+                {...ministerioSaude}
+                alertaAberto={radarLmr.alertaAberto}
+                alertaLoading={radarLmr.alertaLoading}
+                fecharAlerta={radarLmr.fecharAlerta}
+              />
             </div>
           </Suspense>
         )}
