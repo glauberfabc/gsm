@@ -266,7 +266,13 @@ class MotorBuscaIndependente:
         return resultado_final
 
     # ─── Compras.gov.br — Ministério da Saúde sem termo ("buscar todos") ──
-    MODALIDADES_RELEVANTES = [4, 6, 8, 9]  # concorrencia, pregao eletronico, dispensa, inexigibilidade
+    # Codigos opacos definidos pela API do Compras.gov.br - NAO sao os
+    # codigos "padrao" da Lei 14.133/2021. Confirmados ao vivo em
+    # 2026-08-11 lendo modalidadeNome de respostas reais:
+    # 3=Concorrencia Eletronica, 5=Pregao Eletronico, 6=Dispensa,
+    # 7=Inexigibilidade (uma suposicao errada anterior, 4/6/8/9, fez a
+    # busca nunca encontrar Pregao Eletronico).
+    MODALIDADES_RELEVANTES = [3, 5, 6, 7]
 
     async def _buscar_ministerio_saude_sem_termo(
         self,

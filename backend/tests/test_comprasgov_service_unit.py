@@ -8,6 +8,20 @@ import services.comprasgov_service as comprasgov_service_module
 from services.comprasgov_service import ComprasGovService
 
 
+class TestModalidadesBuscaGeral:
+    def test_codigos_de_modalidade_batem_com_os_nomes_reais_da_api(self):
+        """Os codigos de modalidade sao valores opacos definidos pela API do
+        Compras.gov.br, confirmados ao vivo em 2026-08-11 consultando
+        1_consultarContratacoes_PNCP_14133 e lendo o campo modalidadeNome
+        de cada resposta real: 3=Concorrencia Eletronica, 5=Pregao
+        Eletronico, 6=Dispensa, 7=Inexigibilidade. NAO sao os codigos
+        "padrao" da Lei 14.133/2021 (4/6/8/9) que alguem assumiria de
+        memoria - essa suposicao errada ja causou um bug real em producao
+        (buscas gerais e a busca por escopo Ministerio da Saude nunca
+        encontravam Pregao Eletronico, a modalidade mais comum)."""
+        assert ComprasGovService.MODALIDADES_BUSCA_GERAL == [3, 5, 6, 7]
+
+
 class TestBuscarContratacoesPorObjeto:
     def test_chama_a_api_uma_vez_por_modalidade_relevante(self, monkeypatch):
         """A API do Compras.gov.br exige codigoModalidade (obrigatorio) -
@@ -38,12 +52,12 @@ class TestBuscarContratacoesPorObjeto:
     def test_agrega_resultados_de_todas_as_modalidades_e_filtra_pelo_termo(self, monkeypatch):
         async def fake_consultar_contratacoes_pncp(**kwargs):
             modalidade = kwargs.get('modalidade')
-            if modalidade == 6:
+            if modalidade == 5:  # Pregao Eletronico
                 return {'resultado': [
                     {'objetoCompra': 'AQUISICAO DE INSULINA NPH', 'orgaoEntidadeCnpj': '1'},
                     {'objetoCompra': 'AQUISICAO DE SERINGAS', 'orgaoEntidadeCnpj': '1'},
                 ]}
-            if modalidade == 8:
+            if modalidade == 6:  # Dispensa
                 return {'resultado': [
                     {'objetoCompra': 'DISPENSA PARA COMPRA DE INSULINA REGULAR', 'orgaoEntidadeCnpj': '2'},
                 ]}

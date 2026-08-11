@@ -6,6 +6,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from services.motor_independente import MotorBuscaIndependente
 
 
+class TestModalidadesRelevantes:
+    def test_codigos_de_modalidade_batem_com_os_nomes_reais_da_api(self):
+        """Confirmado ao vivo em 2026-08-11 (ver comprasgov_service.py):
+        3=Concorrencia Eletronica, 5=Pregao Eletronico, 6=Dispensa,
+        7=Inexigibilidade - nao sao os codigos "padrao" da Lei 14.133/2021
+        que se assumiria de memoria."""
+        assert MotorBuscaIndependente.MODALIDADES_RELEVANTES == [3, 5, 6, 7]
+
+
 class TestEscolherDocumentoEdital:
     def test_prefere_documento_marcado_como_edital(self):
         arquivos = [

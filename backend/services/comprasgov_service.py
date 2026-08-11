@@ -116,10 +116,18 @@ class ComprasGovService:
     # codigoModalidade e obrigatorio na API do Compras.gov.br (nao ha opcao
     # "todas as modalidades" numa unica chamada - confirmado via OpenAPI
     # spec ao vivo: sem esse parametro a API retorna 404). Cobrimos as
-    # modalidades mais comuns para medicamentos/insumos (mesmo conjunto ja
-    # usado na busca por escopo Ministerio da Saude): Concorrencia
+    # modalidades mais comuns para medicamentos/insumos: Concorrencia
     # Eletronica, Pregao Eletronico, Dispensa de Licitacao, Inexigibilidade.
-    MODALIDADES_BUSCA_GERAL = [4, 6, 8, 9]
+    #
+    # IMPORTANTE: esses codigos sao valores opacos definidos pela propria
+    # API - NAO sao os codigos "padrao" da Lei 14.133/2021. Confirmados ao
+    # vivo em 2026-08-11 consultando 1_consultarContratacoes_PNCP_14133 e
+    # lendo modalidadeNome de respostas reais (nao adivinhar/assumir):
+    # 3=Concorrencia Eletronica, 5=Pregao Eletronico, 6=Dispensa,
+    # 7=Inexigibilidade. Uma suposicao errada anterior (4/6/8/9, os codigos
+    # "padrao" da lei) fez a busca nunca encontrar Pregao Eletronico - a
+    # modalidade mais comum - por varios dias em producao.
+    MODALIDADES_BUSCA_GERAL = [3, 5, 6, 7]
 
     async def buscar_contratacoes_por_objeto(
         self,
