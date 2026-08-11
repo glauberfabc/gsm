@@ -8,7 +8,7 @@ const TABS = [
   { id: 'radar', label: 'Radares', icon: Radar, color: 'emerald' },
   { id: 'precos', label: 'Precos', icon: TrendingUp, color: 'amber' },
   { id: 'anvisa', label: 'Janela ANVISA', icon: Pill, color: 'red' },
-  { id: 'radar-lmr', label: 'Radar LMR', icon: Target, color: 'teal' },
+  { id: 'radar-lmr', label: 'Ministério da Saúde', icon: Target, color: 'teal' },
   { id: 'radar-farma', label: 'Radar Farma', icon: Activity, color: 'rose' },
   { id: 'dama', label: 'DAMA IA', icon: Zap, color: 'purple' },
 ];
