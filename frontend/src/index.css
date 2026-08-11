@@ -17,6 +17,13 @@ code {
         source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
+/* Esconde o botao nativo de "mostrar senha" do Edge/IE e o "limpar campo"
+   do Chrome, para nao duplicar/conflitar com o icone de olho customizado. */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+
 @layer base {
     :root {
         --background: 0 0% 100%;
