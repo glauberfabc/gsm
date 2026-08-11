@@ -30,10 +30,14 @@ export function RadarFarmaceuticoTab({
   listaInteresse, desabastecimento, stats, loading, scanLoading, addLoading,
   carregarListaInteresse, carregarDesabastecimento, carregarStats,
   adicionarInteresse, removerInteresse, executarScan,
+  // Busca RDC 81 (registro ANVISA / desabastecimento / viabilidade de
+  // importacao) - reaproveita o motor ja existente do antigo Radar LMR.
+  analiseDetalhe, analiseLoading, analisarMedicamento, setAnaliseDetalhe,
 }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({ medicamento: '', principio_ativo: '', categoria: 'Oncologia', prioridade: 'alta', target_type: 'Importacao' });
   const [expandedDesab, setExpandedDesab] = useState(null);
+  const [buscaRdc81, setBuscaRdc81] = useState('');
 
   useEffect(() => {
     if (!listaInteresse) carregarListaInteresse();
@@ -55,6 +59,12 @@ export function RadarFarmaceuticoTab({
 
   const handleRemove = async (id) => {
     await removerInteresse(id);
+  };
+
+  const handleBuscarRdc81 = () => {
+    if (buscaRdc81.trim()) {
+      analisarMedicamento(buscaRdc81.trim());
+    }
   };
 
   const items = listaInteresse?.items || [];
@@ -85,6 +95,39 @@ export function RadarFarmaceuticoTab({
             {scanLoading ? 'Escaneando DOU...' : 'Escanear Desabastecimento'}
           </button>
         </div>
+      </div>
+
+      {/* Busca RDC 81 - registro ANVISA / desabastecimento / viabilidade de importacao */}
+      <div className="bg-white rounded-2xl shadow-lg border-2 border-rose-100 p-4" data-testid="busca-rdc81">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldAlert size={18} className="text-rose-500"/>
+          <span className="text-sm font-black text-slate-700 uppercase tracking-wide">Análise RDC 81/2008</span>
+          <span className="text-[10px] text-slate-400 font-medium ml-1">Registro ANVISA, desabastecimento e viabilidade de importação por medicamento</span>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <input type="text" data-testid="rdc81-busca-input"
+            value={buscaRdc81} onChange={(e) => setBuscaRdc81(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleBuscarRdc81()}
+            placeholder="Nome do medicamento..."
+            className="flex-1 min-w-[200px] px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-700 placeholder:text-slate-300 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all"
+          />
+          <button data-testid="rdc81-analisar-btn" onClick={handleBuscarRdc81}
+            disabled={analiseLoading || !buscaRdc81.trim()}
+            className="px-6 py-3 bg-rose-600 text-white rounded-xl font-black text-sm uppercase hover:bg-rose-700 disabled:opacity-50 transition-all flex items-center gap-2">
+            {analiseLoading ? <Loader2 size={16} className="animate-spin"/> : <Search size={16}/>}
+            {analiseLoading ? 'Analisando...' : 'Analisar'}
+          </button>
+        </div>
+
+        {analiseDetalhe?.resumo_regulatorio_rdc81 && (
+          <div className="mt-4">
+            <ResumoRegulatorioCard
+              medicamento={analiseDetalhe.medicamento}
+              resumo={analiseDetalhe.resumo_regulatorio_rdc81}
+              onClose={() => setAnaliseDetalhe(null)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -346,6 +389,41 @@ const STAT_COLORS = {
   rose: { text: 'text-rose-600', iconBg: 'bg-rose-100', iconColor: 'text-rose-600' },
   emerald: { text: 'text-emerald-600', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600' },
 };
+
+function ResumoRegulatorioCard({ medicamento, resumo, onClose }) {
+  const viavel = resumo.viabilidade_importacao_rdc81?.startsWith('VIÁVEL');
+  return (
+    <div className="bg-slate-50 border-2 border-slate-200 rounded-xl overflow-hidden" data-testid="resumo-regulatorio-rdc81">
+      <div className="bg-slate-700 px-4 py-2 flex items-center justify-between">
+        <p className="text-xs font-black text-white uppercase tracking-wide">
+          📋 {medicamento} — Análise Regulatória e Viabilidade RDC 81/2008
+        </p>
+        <button onClick={onClose} className="text-white/70 hover:text-white transition-colors text-sm font-bold">✕</button>
+      </div>
+      <div className="p-4 space-y-3">
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase">1. Registro na ANVISA</p>
+          <p className="text-sm font-bold text-slate-700">
+            {resumo.registrado_anvisa ? 'SIM' : 'NÃO'}
+            {resumo.laboratorios_referencia?.length > 0 && (
+              <span className="font-normal text-slate-500"> — {resumo.laboratorios_referencia.join(', ')}</span>
+            )}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase">2. Situação de Falta / Desabastecimento</p>
+          <p className="text-sm font-semibold text-slate-700">{resumo.situacao_desabastecimento}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase">3. Viabilidade de Importação (RDC 81/2008)</p>
+          <p className={`text-sm font-bold ${viavel ? 'text-emerald-700' : 'text-red-700'}`}>
+            {resumo.viabilidade_importacao_rdc81}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function StatCard({ label, value, color, icon: Icon, testId }) {
   const c = STAT_COLORS[color] || STAT_COLORS.blue;

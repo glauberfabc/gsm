@@ -178,7 +178,13 @@ function AppContent() {
         {activeTab === 'radar-farma' && (
           <Suspense fallback={LazyFallback}>
             <div data-testid="radar-farma-dashboard">
-              <RadarFarmaceuticoTab {...radarFarma} />
+              <RadarFarmaceuticoTab
+                {...radarFarma}
+                analiseDetalhe={radarLmr.analiseDetalhe}
+                analiseLoading={radarLmr.analiseLoading}
+                analisarMedicamento={radarLmr.analisarMedicamento}
+                setAnaliseDetalhe={radarLmr.setAnaliseDetalhe}
+              />
             </div>
           </Suspense>
         )}
